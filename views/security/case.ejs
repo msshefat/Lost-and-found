@@ -1,0 +1,124 @@
+<%
+  var reviewable = view.status === 'under_review';
+  var canMatch = ['open', 'matched'].indexOf(view.status) !== -1;
+%>
+<%- include('/partials/top') %>
+<a class="back-link" href="/security/queue"><%- icon('arrow-left') %><%= t('back') %></a>
+<div class="page-head">
+  <div>
+    <div class="cluster">
+      <span class="tag tag-<%= view.type %>"><%= t('type_' + view.type) %></span>
+      <%- include('/partials/chip', { kind: 'case', value: view.status }) %>
+      <span class="mono muted"><%= view.ref %></span>
+    </div>
+    <h1><%= view.title %></h1>
+  </div>
+</div>
+
+<div class="layout-2">
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-head"><h2><%= t('item_details') %></h2></div>
+      <dl class="kv">
+        <dt><%= t('f_category') %></dt><dd><%= nm(category) %></dd>
+        <dt><%= t('item_where') %></dt><dd><%= place(location) %><% if (view.locationDetail) { %> · <%= view.locationDetail %><% } %></dd>
+        <dt><%= t('item_when') %></dt><dd><%= fmt.dateTime(view.occurredAt) %></dd>
+        <dt><%= t('item_reported') %></dt><dd><%= fmt.dateTime(view.createdAt) %></dd>
+        <dt><%= t('f_description') %></dt><dd class="prose"><%= view.description %></dd>
+        <% if (view.storageSlot) { %><dt><%= t('item_slot') %></dt><dd><%= view.storageSlot %></dd><% } %>
+        <% if (view.closeReason) { %><dt><%= t('item_outcome') %></dt><dd><%= t('close_' + view.closeReason) %></dd><% } %>
+        <% if (view.retentionFlaggedAt) { %><dt><%= t('flag_retention') %></dt><dd><%= fmt.date(view.retentionFlaggedAt) %></dd><% } %>
+      </dl>
+      <% if (view.photo) { %><img class="item-photo" src="/uploads/<%= view.photo %>" alt="<%= t('item_photo_alt') %>"><% } %>
+    </section>
+
+    <% if (reviewable && canAct) { %>
+    <section class="panel">
+      <h2><%= t('review_title') %></h2>
+      <p class="muted"><%= t(view.type === 'found' ? 'review_sub_found' : 'review_sub_lost') %></p>
+      <form method="post" action="/security/cases/<%= view.ref %>/review" novalidate>
+        <%- csrfField() %>
+        <% if (view.type === 'found') { %><%- include('/partials/field', { name: 'storageSlot', label: 'f_slot', maxlength: 20, hint: 'f_slot_hint', values: { storageSlot: view.storageSlot || '' } }) %><% } %>
+        <%- include('/partials/textarea', { name: 'note', label: 'review_note', rows: 3, maxlength: 500, hint: 'review_note_hint', values: {} }) %>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit" name="decision" value="accept"><%= t(view.type === 'found' ? 'review_accept_found' : 'review_accept_lost') %></button>
+          <button class="btn btn-danger" type="submit" name="decision" value="reject"><%= t('review_reject') %></button>
+        </div>
+      </form>
+    </section>
+    <% } %>
+
+    <% if (canMatch && matches.length) { %>
+    <section class="stack-sm">
+      <h2><%= t('item_matches') %></h2>
+      <% matches.forEach(function (m) { %><%- include('/partials/match-card', { m: m, staff: true, canAct: canAct }) %><% }) %>
+    </section>
+    <% } %>
+
+    <% if (view.type === 'found' && caseClaims.length) { %>
+    <section class="panel">
+      <div class="panel-head"><h2><%= t('case_claims') %></h2></div>
+      <ul class="list">
+        <% caseClaims.forEach(function (c) { %>
+        <li><a class="row-link" href="/security/claims/<%= c.id %>"><span class="title"><%= c.claimant ? c.claimant.name : '' %><span class="small muted block"><%= fmt.dateTime(c.createdAt) %></span></span><%- include('/partials/chip', { kind: 'claim', value: c.status }) %></a></li>
+        <% }) %>
+      </ul>
+    </section>
+    <% } %>
+
+    <section class="panel">
+      <div class="panel-head"><h2><%= t('case_notes') %></h2></div>
+      <% if (!notes.length) { %><p class="muted"><%= t('case_notes_none') %></p><% } else { %>
+      <ul class="list">
+        <% notes.forEach(function (n) { %>
+        <li>
+          <strong><%= t('note_kind_' + n.kind) %></strong> <span class="small muted"><%= fmt.dateTime(n.createdAt) %></span>
+          <% if (n.kind === 'cctv' && (n.camera || n.windowFrom)) { %><br><span class="small muted"><%= n.camera %><% if (n.windowFrom) { %> · <%= fmt.dateTime(n.windowFrom) %><% if (n.windowTo) { %> – <%= fmt.dateTime(n.windowTo) %><% } %><% } %></span><% } %>
+          <br><span class="prose"><%= n.findings %></span>
+        </li>
+        <% }) %>
+      </ul>
+      <% } %>
+      <% if (canAct) { %>
+      <hr>
+      <form method="post" action="/security/cases/<%= view.ref %>/notes" novalidate>
+        <%- csrfField() %>
+        <div class="form-grid">
+          <%- include('/partials/select', { name: 'kind', label: 'note_kind', required: true, options: [{ value: 'note', label: t('note_kind_note') }, { value: 'cctv', label: t('note_kind_cctv') }], values: {} }) %>
+          <%- include('/partials/field', { name: 'camera', label: 'note_camera', maxlength: 80, values: {} }) %>
+          <%- include('/partials/field', { name: 'windowFrom', label: 'note_from', type: 'datetime-local', max: nowInput(), values: {} }) %>
+          <%- include('/partials/field', { name: 'windowTo', label: 'note_to', type: 'datetime-local', max: nowInput(), values: {} }) %>
+          <div class="span-2"><%- include('/partials/textarea', { name: 'findings', label: 'note_findings', required: true, rows: 3, maxlength: 1500, hint: 'note_hint', values: {} }) %></div>
+        </div>
+        <button class="btn btn-secondary" type="submit"><%= t('note_save') %></button>
+      </form>
+      <% } %>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="panel">
+      <h2><%= t('item_timeline') %></h2>
+      <%- include('/partials/timeline', { events: events }) %>
+    </section>
+    <% if (reporter || view.finder) { %>
+    <section class="panel">
+      <h2><%= view.type === 'found' ? t('item_finder') : t('item_reporter') %></h2>
+      <dl class="kv">
+        <% if (view.finder) { %>
+          <dt><%= t('f_name') %></dt><dd><%= view.finder.name %></dd>
+          <% if (view.finder.contact) { %><dt><%= t('intake_contact') %></dt><dd><%= view.finder.contact %></dd><% } %>
+          <% if (view.finder.universityId) { %><dt><%= t('f_university_id') %></dt><dd><%= view.finder.universityId %></dd><% } %>
+          <dt><%= t('intake_recorded_by') %></dt><dd><%= view.finder.recordedByName %></dd>
+        <% } else { %>
+          <dt><%= t('f_name') %></dt><dd><%= reporter.name %></dd>
+          <dt><%= t('f_email') %></dt><dd><%= reporter.email %></dd>
+          <% if (reporter.universityId) { %><dt><%= t('f_university_id') %></dt><dd><%= reporter.universityId %></dd><% } %>
+          <% if (reporter.phone) { %><dt><%= t('f_phone') %></dt><dd><%= reporter.phone %></dd><% } %>
+        <% } %>
+      </dl>
+    </section>
+    <% } %>
+  </div>
+</div>
+<%- include('/partials/bottom') %>
