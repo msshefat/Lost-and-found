@@ -32,6 +32,21 @@
       <% if (view.photo) { %><img class="item-photo" src="/uploads/<%= view.photo %>" alt="<%= t('item_photo_alt') %>"><% } %>
     </section>
 
+    <% if (view.status === 'pending_approval' && locals.user && locals.user.role === 'admin') { %>
+    <section class="panel">
+      <h2><%= t('appr_decision') %></h2>
+      <p class="muted"><%= t('appr_decision_sub') %></p>
+      <form method="post" action="/approver/cases/<%= view.ref %>/decision" novalidate>
+        <%- csrfField() %>
+        <%- include('/partials/textarea', { name: 'remarks', label: 'appr_remarks', rows: 3, maxlength: 500, hint: 'appr_remarks_hint', values: {} }) %>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit" name="decision" value="approve"><%= t('appr_approve') %></button>
+          <button class="btn btn-danger" type="submit" name="decision" value="reject"><%= t('appr_reject') %></button>
+        </div>
+      </form>
+    </section>
+    <% } %>
+
     <% if (reviewable && canAct) { %>
     <section class="panel">
       <h2><%= t('review_title') %></h2>

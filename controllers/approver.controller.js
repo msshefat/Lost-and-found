@@ -1,5 +1,5 @@
 'use strict';
-// The authorized approver decides on cases that need approval. Nothing else.
+// Reports that need approval. The authorized approver decides them. An administrator can too.
 const wrap = require('../utils/wrapController');
 const cases = require('../services/case.service');
 const analytics = require('../services/analytics.service');
@@ -19,7 +19,8 @@ module.exports = wrap({
   async caseDetail(req, res, next) {
     const ref = cleanRef(req.params.ref);
     const data = ref && await cases.getForViewer(req.user, ref);
-    if (!data || data.level !== 'approver' || !data.view.approvalRequired) return next();
+    const mayDecide = data && (data.level === 'approver' || req.user.role === 'admin');
+    if (!mayDecide || !data.view.approvalRequired) return next();
     res.render('approver/case', { pageTitle: data.view.ref, ...shell, ...data, errors: {}, formError: null });
   },
 

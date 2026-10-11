@@ -4,7 +4,9 @@ const { requireRole } = require('../middleware/auth');
 const approver = require('../controllers/approver.controller');
 const { ROLES } = require('../config/roles');
 
-router.use(requireRole(ROLES.APPROVER));
+// The authorized approver decides these reports. An administrator can do the same when
+// that approver is not available, which is the "Waiting for approval" status on a lost report.
+router.use(requireRole(ROLES.APPROVER, ROLES.ADMIN));
 router.get('/', approver.queue);
 router.get('/history', approver.queue);
 router.get('/cases/:ref', approver.caseDetail);

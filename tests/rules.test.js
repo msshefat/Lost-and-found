@@ -210,3 +210,45 @@ test('unclaimed items are flagged after the retention period; staff decide, noth
   assert.ok(kept.retentionResetAt);
   assert.equal(await retention.sweep(), 0, 'and it is not flagged again straight away');
 });
+
+test('an administrator can approve or reject a report that is waiting for approval', async (t) => {
+  const srv = await startServer();
+  t.after(() => srv.close());
+  const caseModel = require('../models/case.model');
+  const student = await signedIn(srv.base, 'student');
+  const admin = await signedIn(srv.base, 'admin');
+
+  const phone = lostForm({
+    categoryId: 3, locationId: 1, title: 'Black campus phone',
+    description: 'Black phone in a clear case with a blue sticker and a cracked top corner.'
+  });
+  const sent = await student.multipart('/report', phone, null, { from: FORM });
+  const ref = refFrom(sent.location);
+  assert.equal((await caseModel.findByRef(ref)).status, 'pending_approval');
+
+  const page = await admin.get(`/security/cases/${ref}`);
+  assert.equal(page.status, 200);
+  assert.match(page.text, /Waiting for approval/);
+  assert.match(page.text, /name="decision" value="approve"/);
+
+  const decided = await admin.post(`/approver/cases/${ref}/decision`, { decision: 'approve' }, { from: `/security/cases/${ref}` });
+  assert.equal(decided.status, 302);
+  assert.equal((await caseModel.findByRef(ref)).status, 'under_review');
+
+  const laptop = await student.multipart('/report', lostForm({
+    categoryId: 4, locationId: 2, title: 'Silver campus laptop',
+    description: 'Silver laptop with a dent on the left corner and a sticker of a book on the lid.'
+  }), null, { from: FORM });
+  const laptopRef = refFrom(laptop.location);
+  const rejected = await admin.post(`/approver/cases/${laptopRef}/decision`, { decision: 'reject', remarks: 'Not enough detail to approve.' }, { from: `/approver/cases/${laptopRef}` });
+  assert.equal(rejected.status, 302);
+  assert.equal((await caseModel.findByRef(laptopRef)).status, 'rejected');
+
+  const own = await admin.multipart('/report', lostForm({
+    categoryId: 3, locationId: 1, title: 'Admin own phone',
+    description: 'Black phone with a green case that the administrator reported themselves.'
+  }), null, { from: FORM });
+  const ownRef = refFrom(own.location);
+  await admin.post(`/approver/cases/${ownRef}/decision`, { decision: 'approve' }, { from: FORM });
+  assert.equal((await caseModel.findByRef(ownRef)).status, 'pending_approval', 'an administrator cannot approve their own report');
+});

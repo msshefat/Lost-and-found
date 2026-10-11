@@ -21,6 +21,7 @@ const workspace = {
   approver: [{ href: '/approver', key: 'nav_approvals', icon: 'clipboard' }],
   admin: [
     { href: '/admin', key: 'nav_overview', icon: 'home' },
+    { href: '/approver', key: 'nav_approvals', icon: 'clipboard' },
     { href: '/admin/users', key: 'nav_users', icon: 'users' },
     { href: '/admin/id-reviews', key: 'nav_id_reviews', icon: 'shield' },
     { href: '/admin/categories', key: 'nav_categories', icon: 'list' },

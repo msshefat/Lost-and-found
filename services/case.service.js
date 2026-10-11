@@ -125,6 +125,7 @@ async function createReport(user, input, file, ip = '') {
   if (needsApproval) {
     await caseModel.addEvent(c.id, { key: 'ev_sent_for_approval', params: {} });
     await notifications.notifyRole(ROLES.APPROVER, 'notif_approval_needed', { ref: c.ref }, `/approver/cases/${c.ref}`);
+    await notifications.notifyRole(ROLES.ADMIN, 'notif_approval_needed', { ref: c.ref }, `/approver/cases/${c.ref}`);
   } else {
     await notifications.notifyRole(ROLES.SECURITY, 'notif_review_needed', { ref: c.ref }, `/security/cases/${c.ref}`);
   }
