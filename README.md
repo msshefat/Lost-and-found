@@ -21,7 +21,7 @@ SafeFind replaces the paper process at the Security Cell with one case record th
 | Analytics (charts and a hotspot map), audit log, administrator settings | Works |
 | Home page | Built in 1.3.1 from the owner's concept as drawn. The image in the hero is the concept's ticket diagram. |
 | English and Bangla | Public, sign-in and member screens are translated. Staff and administrator screens fall back to English. |
-| **Data storage** | **In memory.** Restarting the server empties everything except the demo data. The PostgreSQL schema is in `docs/schema.sql` and is tested on a real PostgreSQL engine, but the models that use it are not written yet (`docs/DB_NOTES.md`). |
+| **Data storage** | **PostgreSQL.** `DATABASE_URL` is required. The server applies `docs/schema.sql` to an empty database on first start, then loads the demo data once. `database/safefind.sql` is a dump of that database you can restore somewhere else. Tests use the same schema on PGlite and do not need a server (`docs/DB_NOTES.md`). |
 | E-mail | In development, messages are printed to the console and the link is shown on the page. In production an SMTP server is required. The SMTP path is tested against a fake server. |
 
 How it was checked: 169 automated tests (`npm test`), and two browser passes in headless Chromium. The first covered 198 page loads for version 1.1 (desktop and 360 px, light and dark, English and Bangla, including a QR scan with a simulated camera). The second is `npm run browser-check` for versions 1.2 and 1.3: 40 checks of the uploader, the report steps, live filters, live alerts, toast messages, the home page (header, steps, keyboard, signed-in state), contrast and 360 px width, in both themes and both languages. **Not tested:** a real Cloudinary account, real phone cameras, Safari, Firefox, Windows, Node versions other than 22.
@@ -33,10 +33,21 @@ You need Node.js 20 or 22 (LTS).
 ```
 npm install
 copy .env.example .env      (macOS/Linux: cp .env.example .env)
+```
+
+Create an empty PostgreSQL database and set `DATABASE_URL` in `.env`. Two ways to fill it:
+
+```
+psql "$DATABASE_URL" -f database/safefind.sql
+```
+
+restores the ready demo database (schema, accounts and sample cases). Or leave the database empty and run `npm start`: the app applies `docs/schema.sql` and seeds the same demo data itself.
+
+```
 npm start
 ```
 
-Open http://localhost:3000. `RUN_INSTRUCTIONS.txt` has a five-minute walkthrough for a demo.
+Open http://localhost:3000. `RUN_INSTRUCTIONS.txt` has a five-minute walkthrough for a demo. To make a fresh dump after you have changed data: `pg_dump --no-owner --no-acl --clean --if-exists "$DATABASE_URL" > database/safefind.sql`.
 
 ### Demo accounts (development only)
 

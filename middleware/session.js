@@ -9,10 +9,14 @@ const config = require('../config');
 const COOKIE_NAME = 'sf.sid';
 
 function buildStore() {
-  if (config.databaseUrl) {
-    const { Pool } = require('pg');
-    const PgSession = require('connect-pg-simple')(session);
-    return new PgSession({ pool: new Pool({ connectionString: config.databaseUrl }), tableName: 'session', createTableIfMissing: true });
+  // The same pool the models use, so sessions and cases live in one database.
+  // Tests keep the memory store: each test process has its own PGlite, which this session library cannot use.
+  if (config.databaseUrl && !config.isTest) {
+    const pool = require('../db').pool();
+    if (pool) {
+      const PgSession = require('connect-pg-simple')(session);
+      return new PgSession({ pool, tableName: 'session', createTableIfMissing: true });
+    }
   }
   if (config.isProd) console.warn('[SafeFind] DATABASE_URL is not set: using the in-memory session store. Sessions are lost on restart and this is not suitable for production.');
   return undefined;

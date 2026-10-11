@@ -2,7 +2,9 @@
 
 ## Where things stand
 
-The application keeps its data in memory. `docs/schema.sql` is the PostgreSQL version of the same data. It is written and tested, but **no model uses it yet**. Setting `DATABASE_URL` today only moves the login sessions into PostgreSQL (through `connect-pg-simple`); cases, claims and users stay in memory and are lost when the server stops.
+The application stores its data in PostgreSQL. `docs/schema.sql` is applied automatically the first time the server connects to an empty database (`db/index.js`). Every model in `models/` reads and writes that schema, and the pages keep the same shape of data they had before. Login sessions use the same database when `DATABASE_URL` is set.
+
+`npm test` does not need a running server: it applies the same schema to PGlite. A dump you can restore on another PostgreSQL is `database/safefind.sql` (see README).
 
 `tests/schema.test.js` runs `docs/schema.sql` on a real PostgreSQL engine (PGlite, PostgreSQL compiled to WebAssembly; PostgreSQL 18.3 when this was written) and checks each rule below by trying to break it. It needs no database server: `npm test` runs it.
 

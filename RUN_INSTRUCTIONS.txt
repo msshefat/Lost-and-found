@@ -1,16 +1,24 @@
 SAFEFIND BUP - HOW TO RUN IT AND SHOW IT
 
 1. Install Node.js 20 or 22 LTS from nodejs.org. Check:  node -v
+   Install PostgreSQL 14 or newer as well.
 
 2. In this folder, in a terminal:
 
      npm install
      copy .env.example .env            (macOS or Linux: cp .env.example .env)
+
+   Create an empty database and put its address in DATABASE_URL inside .env.
+   Then either restore the ready dump:
+
+     psql "$DATABASE_URL" -f database/safefind.sql
+
+   or leave the database empty. On the first start the app creates the tables
+   and loads the demo data itself. Data stays in PostgreSQL when you stop the server.
+
      npm start
 
-3. Open http://localhost:3000 in a browser. The demo data loads on start.
-   Stop the server with Ctrl+C. Everything you entered is gone when it stops
-   (the data is kept in memory; see README.md).
+3. Open http://localhost:3000 in a browser.
 
 DEMO ACCOUNTS (password in brackets)
    Student            student@safefind.example      (Student@12345)

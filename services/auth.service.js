@@ -65,27 +65,40 @@ async function checkPassword(user, password) {
 
 // ---------------------------------------------------------------- failed-login tracking
 // Keyed by the submitted email whether or not an account exists, so it reveals nothing.
+// Stored in login_failures so a restart, or a second server process, still keeps the lock.
+const db = require('../db');
 const FAIL_WINDOW_MS = 15 * 60 * 1000;
 const LOCK_MS = 15 * 60 * 1000;
-const failures = new Map();
 
-function lockState(email) {
-  const f = failures.get(email);
-  if (!f) return { locked: false };
-  if (f.lockedUntil && f.lockedUntil > Date.now()) return { locked: true, until: f.lockedUntil };
-  if (Date.now() - f.firstAt > FAIL_WINDOW_MS) failures.delete(email);
+async function lockState(email) {
+  const row = await db.one('SELECT failures, first_at, locked_until FROM login_failures WHERE email = $1', [email]);
+  if (!row) return { locked: false };
+  const lockedUntil = row.locked_until ? new Date(row.locked_until).getTime() : 0;
+  const firstAt = new Date(row.first_at).getTime();
+  if (lockedUntil && lockedUntil > Date.now()) return { locked: true, until: lockedUntil };
+  if (Date.now() - firstAt > FAIL_WINDOW_MS) {
+    await db.query('DELETE FROM login_failures WHERE email = $1', [email]);
+    return { locked: false };
+  }
   return { locked: false };
 }
-function recordFailure(email) {
-  const now = Date.now();
-  let f = failures.get(email);
-  if (!f || now - f.firstAt > FAIL_WINDOW_MS) f = { count: 0, firstAt: now, lockedUntil: 0 };
-  f.count += 1;
-  if (f.count >= config.auth.maxFailedPerEmail) f.lockedUntil = now + LOCK_MS;
-  failures.set(email, f);
-  if (failures.size > 10000) failures.delete(failures.keys().next().value);
+async function recordFailure(email) {
+  const now = new Date();
+  const row = await db.one('SELECT failures, first_at FROM login_failures WHERE email = $1', [email]);
+  let count = 1;
+  let firstAt = now;
+  if (row && now.getTime() - new Date(row.first_at).getTime() <= FAIL_WINDOW_MS) {
+    count = Number(row.failures) + 1;
+    firstAt = new Date(row.first_at);
+  }
+  const lockedUntil = count >= config.auth.maxFailedPerEmail ? new Date(now.getTime() + LOCK_MS) : null;
+  await db.query(
+    `INSERT INTO login_failures (email, failures, first_at, locked_until) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (email) DO UPDATE SET failures = EXCLUDED.failures, first_at = EXCLUDED.first_at, locked_until = EXCLUDED.locked_until`,
+    [email, count, firstAt, lockedUntil]
+  );
 }
-const clearFailures = (email) => failures.delete(email);
+const clearFailures = (email) => db.query('DELETE FROM login_failures WHERE email = $1', [email]);
 
 // ---------------------------------------------------------------- mail helpers
 const link = (path) => `${config.baseUrl}${path}`;
@@ -205,13 +218,13 @@ async function verifyEmail(raw, ip = '') {
 // ---------------------------------------------------------------- login (AUTH-6)
 async function login(emailInput, password, ip = '') {
   const email = norm(emailInput);
-  const lock = lockState(email);
+  const lock = await lockState(email);
   const user = await userModel.findByEmail(email);
   const ok = await checkPassword(user, password); // runs even when locked or unknown
 
   if (lock.locked) throw new AuthError('LOCKED', { until: lock.until });
   if (!ok) {
-    recordFailure(email);
+    await recordFailure(email);
     await audit.record(null, 'auth.login_failed', email, '', ip);
     throw new AuthError('INVALID');
   }
@@ -226,7 +239,7 @@ async function login(emailInput, password, ip = '') {
     throw new AuthError('PENDING_APPROVAL');
   }
 
-  clearFailures(email);
+  await clearFailures(email);
   await userModel.update(user.id, { lastLoginAt: new Date() });
   await audit.record({ id: user.id, name: user.name, role: user.role }, 'auth.login', user.email, '', ip);
   return user;
@@ -253,7 +266,7 @@ async function completeReset(raw, newPassword, ip = '') {
   const user = await userModel.findById(hit.userId);
   if (!user) throw new AuthError('TOKEN_INVALID');
   await userModel.update(user.id, { passwordHash: await hashPassword(newPassword), passwordChangedAt: new Date() });
-  clearFailures(user.email);
+  await clearFailures(user.email);
   await audit.record({ id: user.id, name: user.name, role: user.role }, 'auth.password_reset', user.email, '', ip);
 }
 
@@ -329,6 +342,5 @@ module.exports = {
   AuthError, isAllowedEmail, isValidEmailShape, isValidUniversityId, hashPassword, checkPassword,
   register, registerWithIdCard, resendVerification, peekVerify, verifyEmail, login,
   startReset, peekReset, completeReset, changePassword,
-  inviteAuthority, resendInvite, peekInvite, acceptInvite, bootstrapAdmin,
-  _failures: failures
+  inviteAuthority, resendInvite, peekInvite, acceptInvite, bootstrapAdmin
 };

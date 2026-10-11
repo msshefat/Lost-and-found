@@ -147,7 +147,7 @@ test('whole path: register, confirm the address, wait, administrator approves, p
 
 test('the form refuses what it should and creates nothing (AUTH-8)', async () => {
   const c = new Client(srv.base);
-  const before = { users: userModel._col.count(), files: storedFiles() };
+  const before = { users: await userModel.count(), files: storedFiles() };
 
   const uni = await register(c, { email: 'someone@bup.edu.bd' });
   assert.equal(uni.res.status, 400);
@@ -171,7 +171,7 @@ test('the form refuses what it should and creates nothing (AUTH-8)', async () =>
   const again = await register(c, { email: 'y@gmail.example', universityId: wrong.fields.universityId });
   assert.equal(again.res.status, 400, 'an ID number already in use is refused');
 
-  assert.equal(userModel._col.count(), before.users + 1, 'only the one valid registration created an account');
+  assert.equal(await userModel.count(), before.users + 1, 'only the one valid registration created an account');
   assert.equal(storedFiles(), before.files + 1, 'and only one photo was stored');
   const retry = await register(c, { universityId: 'abc' });
   assert.match(retry.res.text, /choose the photo again/i, 'the person is told the browser forgot the file');

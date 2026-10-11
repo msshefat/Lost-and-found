@@ -1,8 +1,8 @@
 -- SafeFind BUP: PostgreSQL schema.
 --
--- Derived from the in-memory models in /models and the ERD in the project proposal. The application
--- does not read this file yet: today the data lives in memory (see docs/DB_NOTES.md).
--- Run once on an empty database:   psql "$DATABASE_URL" -f docs/schema.sql
+-- Derived from the application models and the ERD in the project proposal.
+-- The app applies this file itself the first time it connects to an empty database.
+-- To load it by hand:   psql "$DATABASE_URL" -f docs/schema.sql
 -- Times are TIMESTAMPTZ (UTC in the database, shown in Asia/Dhaka by the application).
 -- The login session table is created by connect-pg-simple when DATABASE_URL is set.
 

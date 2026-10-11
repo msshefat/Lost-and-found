@@ -1,7 +1,7 @@
 # SafeFind project memory
 
-App version: 1.4.0
-Last updated: 2026-10-08
+App version: 1.5.0
+Last updated: 2026-10-11
 
 This file is the memory of the SafeFind project. It says what the project is, how the owner wants the work done, what state the code is in, which decisions were made and why, what is still open, and what changed in each version. If the assistant, the Claude account or the chat is lost, give this file and the latest project zip to a new assistant or a new team member, and the work continues from where it stopped, without explaining the project again.
 
@@ -144,7 +144,7 @@ Original documents (the owner keeps these; they were in the Claude Project named
 | Analytics (charts and a hotspot map), audit log, administrator settings | Works |
 | Home page | Built in 1.3.1 from the owner's concept as drawn: eyebrow labels, the underlined headline, three tiles, a stats box with the board and a follow card, the campus photo, a four-step strip, four features, a before-and-after table, who can use it, team and contact. The hero image is the concept's ticket diagram: a Lost and a Found ticket, the Security Cell step and the return to the owner. | Works |
 | English and Bangla | Public, sign-in and member screens are translated. Staff and administrator screens fall back to English where a string is not translated. |
-| Data storage | In memory. Restarting empties everything except the demo data. The PostgreSQL schema exists and is tested; the PostgreSQL models are not written (O-3). |
+| Data storage | PostgreSQL, through `DATABASE_URL`. The server applies `docs/schema.sql` to an empty database, then seeds demo data once. `database/safefind.sql` is a dump of that database. Tests use the same schema on PGlite. |
 | E-mail | Development prints messages to the console. Production needs an SMTP server. |
 
 ### 5.2 Stack
@@ -190,7 +190,7 @@ Playwright is not a dependency. `scripts/browser-check.js` loads it if it is ins
 
 ### 5.3 Architecture and layout
 
-Three tiers and MVC with a service layer. Routes map URLs to controllers. Controllers read the request and call services. Services hold the business rules. Models are the data layer: in memory today, written as async functions shaped like PostgreSQL queries so a database can replace them without touching controllers or services. Views are EJS templates without logic. Middleware handles the cross-cutting parts.
+Three tiers and MVC with a service layer. Routes map URLs to controllers. Controllers read the request and call services. Services hold the business rules. Models are the data layer. They talk to PostgreSQL and return the same objects the services already used, so controllers and pages did not change. Views are EJS templates without logic. Middleware handles the cross-cutting parts.
 
 ~~~text
 app.js            wires middleware and routes; start() seeds data, schedules the retention sweep, creates the HTTP server and attaches Socket.io
@@ -198,7 +198,7 @@ config/           environment (index.js), roles, statuses, navigation, team
 routes/           one file per area (URL to controller)
 controllers/      read the request, call a service, render or redirect
 services/         business rules: auth, cases, matching, claims, handover, retention, analytics, notifications, live alerts (realtime), mail, audit, settings, seed
-models/           data access (in memory; collection.js is the tiny in-memory table)
+models/           data access (PostgreSQL). db/ holds the connection. collection.js only paginates lists.
 middleware/       security headers and CSP, session, CSRF, locale, rate limits, uploads, error pages, view helpers
 validators/       form rules, one schema per form; messages are locale keys
 utils/            images (photo storage), progress (the four-step path), format, i18n, text, safeRedirect, wrapController
@@ -247,7 +247,7 @@ Every setting is in `.env.example` with a comment. In production `SESSION_SECRET
 |---|---|
 | Server | `NODE_ENV`, `PORT`, `BASE_URL`, `TRUST_PROXY`, `COOKIE_SECURE` |
 | Secrets | `SESSION_SECRET`, `QR_SECRET`, `BCRYPT_ROUNDS` |
-| Database | `DATABASE_URL` (today it only moves sessions to PostgreSQL) |
+| Database | `DATABASE_URL` (required; cases, accounts, claims and sessions) |
 | Who may register | `ALLOWED_EMAIL_DOMAINS`, `ALLOW_EMAIL_SUBDOMAINS`, `REQUIRE_ADMIN_APPROVAL`, `STUDENT_ID_PATTERN`, `STAFF_ID_PATTERN`, `ALLOW_ID_CARD_REGISTRATION` (true), `ID_CARD_MAX_ATTEMPTS` (3), `ID_CARD_KEEP_DAYS` (30) |
 | First administrator | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` |
 | E-mail | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` |
@@ -382,7 +382,7 @@ Version 1.3.0 redesigned the home page from the owner's concept and was rejected
 |---|---|---|
 | O-1 | Try Cloudinary with real credentials: one upload, one photo view, look for `[images]` log lines, check the plan's quota. | The SDK upload and the signed download were only tested against stand-ins. Each photo view makes one download request to Cloudinary. |
 | O-2 | Team decisions listed in `README.md` under "Decisions the team needs to confirm" (1 to 9): e-mail domains and ID formats, administrator approval or a roster, real contact details and places, a second approver, administrator access to claim details, retention clock start, photos of identity documents outside the university server, deleting photos after closure, a status filter on the public board. | Several defaults are placeholders. |
-| O-3 | Write the PostgreSQL models behind the existing async model interfaces (`docs/DB_NOTES.md`), then use `DATABASE_URL` for all data instead of sessions only. | The biggest remaining engineering item. Today a restart empties all data. |
+| O-3 | Done in 1.5.0. The models write PostgreSQL. What remains is running it on the university's own server and restoring `database/safefind.sql` there. | A restart no longer empties cases or accounts. |
 | O-4 | Test on Safari, Firefox, Windows, a real phone camera, touch drag-and-drop and Node 20. | Only Node 22 on Linux with headless Chromium was used. |
 | O-5 | Production set-up: HTTPS, SMTP, `TRUST_PROXY`, WebSocket pass-through on the proxy, a single server process (or the Socket.io Redis adapter, which is not built), the first administrator through `ADMIN_*`. | Listed in `README.md`, deployment notes. |
 | O-6 | Photo privacy: strip GPS and other metadata on upload, and decide when to delete photos. | Photos keep their metadata and outlive their cases. |
@@ -400,10 +400,10 @@ Version 1.3.0 redesigned the home page from the owner's concept and was rejected
 
 Risks to keep in view:
 
-- All data is in memory until O-3 is done.
+- The app needs a reachable PostgreSQL. Without `DATABASE_URL` it will not start (tests are the exception: they use PGlite).
 - Behind one shared campus address, students share one rate-limit allowance (`RATE_LIMIT_GLOBAL`).
 - If WebSocket is blocked, live toasts do not appear. Notifications are still stored and shown in the bell and on the notifications page.
-- Failed-login counters are in memory and per process.
+- Failed-login counters are in `login_failures`, so they survive a restart. Two server processes share them.
 
 ## 8. Verification record
 
@@ -429,6 +429,13 @@ In 1.3.1 the home page was also compared with the owner's concept by a one-off s
 Never verified so far: a real Cloudinary account, WebSocket through a real reverse proxy, Safari, Firefox, Windows, a real phone camera, touch drag-and-drop, Node versions other than 22, and the requirement-by-requirement coverage of the proposal (Appendix A lists where each requirement lives, but the 1.2 work did not audit them one by one).
 
 ## 9. Change history (newest first)
+
+### v1.5.0 (2026-10-11) PostgreSQL is the data store
+Asked for: connect the existing frontend to the backend, make the database, and leave a copy that can be restored on another PostgreSQL.
+Done: every model reads and writes `docs/schema.sql`. The pages, controllers and services are the same. An empty database is migrated on first start and then seeded. `database/safefind.sql` is the dump to restore. Failed logins are stored in `login_failures`.
+Decisions: keep the model function names, so no page changed. Tests use PGlite with the same schema and still need no database server.
+Verified: `npm test`.
+Open after this: put `DATABASE_URL` on the machine that will keep the real data, and restore the dump there.
 
 ### v1.4.0 (2026-10-08) Registration with an ID card photo
 Asked for: students do not all use the university e-mail, so give another way to prove they belong to BUP: upload an ID card image; the administrator checks it and, at that time, the person's other e-mail (such as Gmail) is the one they sign in with from then on.

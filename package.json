@@ -1,6 +1,6 @@
 {
   "name": "safefind-bup",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "description": "SafeFind BUP - Intelligent Lost & Found Case Management System (web frontend, accounts, in-memory data layer)",
   "main": "app.js",

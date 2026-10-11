@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0
+
+The existing pages now read and write PostgreSQL. Restarting the server no longer drops cases, accounts or claims.
+
+### Added
+
+- `db/index.js` connects with `DATABASE_URL`, applies `docs/schema.sql` to an empty database, and keeps a transaction open for the models that need one.
+- `database/safefind.sql` is a dump of the schema plus the demo data, so the same database can be restored on another PostgreSQL with `psql`.
+- Failed-login counters live in `login_failures`, so a restart does not clear a lock.
+
+### Changed
+
+- Every file in `models/` uses the schema instead of the in-memory tables. Services and pages are unchanged.
+- `npm test` applies the same schema to PGlite. It still does not need a database server.
+
 ## 1.4.0
 
 Registration with an ID card photo, for students and staff who have no university e-mail address. They give any address they use (for example Gmail), send a photo of their BUP ID card, confirm the address, and an administrator checks the card. After approval they sign in with that address.

@@ -75,6 +75,8 @@ function build() {
 }
 
 async function boot() {
+  const db = require('./db');
+  await db.init();
   await require('./services/seed.service').seedAll();
   return build();
 }
@@ -98,7 +100,8 @@ async function start() {
   server.listen(config.port, () => {
     console.log(`[SafeFind] running at ${config.baseUrl} (${config.env})`);
     if (config.seedDemoData) console.log('[SafeFind] demo data loaded. Demo accounts are listed in README.md.');
-    console.log(`[SafeFind] photos: ${config.cloudinary.enabled ? 'Cloudinary (private)' : 'local uploads folder'}; live alerts: ${config.realtime.enabled ? 'on' : 'off'}`);
+    const db = require('./db');
+    console.log(`[SafeFind] database: ${db.kind()}; photos: ${config.cloudinary.enabled ? 'Cloudinary (private)' : 'local uploads folder'}; live alerts: ${config.realtime.enabled ? 'on' : 'off'}`);
   });
   const stop = () => realtime.shutdown(server, () => process.exit(0));
   process.on('SIGTERM', stop);

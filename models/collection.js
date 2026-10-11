@@ -1,7 +1,6 @@
 'use strict';
-// A tiny in-memory "table". It exists so the app runs before the PostgreSQL models do.
-// Rows are copied on the way in and out, so callers cannot change stored data by accident,
-// which is also how a real database behaves.
+// `paginate` is what the list pages use. `createCollection` remains only so older notes
+// in the docs still match a file in the tree; the models no longer call it.
 function createCollection() {
   const rows = new Map();
   let seq = 0;
