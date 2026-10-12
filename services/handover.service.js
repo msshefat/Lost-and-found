@@ -139,6 +139,8 @@ async function complete(staff, input, { idChecked }, ip = '') {
   return ctx;
 }
 
+const listHistory = (filters) => handoverModel.listHistory(filters);
+
 const listPending = async () => {
   const rows = await handoverModel.listByStatus('pending');
   const out = [];
@@ -150,4 +152,4 @@ const listPending = async () => {
   return out;
 };
 
-module.exports = { create, renew, renewAs, forClaim, qrPng, makeToken, shortCode, parseToken, resolve, complete, listPending };
+module.exports = { create, renew, renewAs, forClaim, qrPng, makeToken, shortCode, parseToken, resolve, complete, listPending, listHistory };

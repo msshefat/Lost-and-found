@@ -45,8 +45,8 @@ test('security headers: strict CSP without inline script or style allowances', a
 test('no rendered page contains inline scripts, style attributes or event handlers', async () => {
   const pages = { anon: ['/', '/browse', '/about', '/auth/login', '/auth/register', '/auth/forgot', '/nope'],
     student: ['/dashboard', '/report', '/track', '/notifications', '/account'],
-    security: ['/security', '/security/queue', '/security/matches', '/security/claims', '/security/handover', '/security/unclaimed', '/security/intake'],
-    approver: ['/approver'], admin: ['/admin', '/admin/users', '/admin/categories', '/admin/locations', '/admin/settings', '/admin/analytics', '/admin/audit'] };
+    security: ['/security', '/security/queue', '/security/records', '/security/matches', '/security/claims', '/security/handover', '/security/handover/history', '/security/unclaimed', '/security/intake'],
+    approver: ['/approver'], admin: ['/admin', '/admin/users', '/admin/categories', '/admin/locations', '/admin/settings', '/admin/analytics', '/admin/audit', '/security/records', '/security/handover/history'] };
   for (const [who, list] of Object.entries(pages)) {
     const c = who === 'anon' ? new Client(srv.base) : await signedIn(srv.base, who);
     for (const p of list) {
@@ -76,6 +76,8 @@ test('role-based access: every protected route answers correctly for every role'
     '/security/matches': [302, 403, 200, 403, 200],
     '/security/claims': [302, 403, 200, 403, 200],
     '/security/handover': [302, 403, 200, 403, 200],
+    '/security/handover/history': [302, 403, 200, 403, 200],
+    '/security/records': [302, 403, 200, 403, 200],
     '/security/unclaimed': [302, 403, 200, 403, 200],
     '/security/intake': [302, 403, 200, 403, 403],
     '/approver': [302, 403, 403, 200, 200],
@@ -101,6 +103,7 @@ test('role-based access: actions are refused for the wrong role even with a vali
   const admin = await signedIn(srv.base, 'admin');
   const refused = [
     [student, '/security/matches/1/confirm'], [student, '/approver/cases/SF-2026-0001/decision'], [student, '/admin/users/1/suspend'],
+    [student, '/admin/users/1/delete'], [security, '/admin/users/1/delete'],
     [approver, '/security/cases/SF-2026-0001/review'], [admin, '/security/handover/complete'], [admin, '/security/matches/1/confirm'],
     [security, '/admin/users/1/suspend'], [security, '/approver/cases/SF-2026-0001/decision'], [security, '/admin/settings']
   ];
@@ -188,6 +191,80 @@ test('suspending an account ends its session at the next request (D7)', async ()
   const again = await new Client(srv.base).post('/auth/login', { email: 'suspendme@safefind.example', password: 'Suspend@12345' }, { from: '/auth/login' });
   assert.equal(again.status, 403);
   assert.match(formError(again.text), /suspended/i);
+});
+
+test('an administrator can edit an account, but not its password or ID', async () => {
+  const u = await scratchUser('editme@safefind.example', 'Editme@12345', { universityId: '2024999001', phone: '01700000000' });
+  const admin = await signedIn(srv.base, 'admin');
+  const page = await admin.get(`/admin/users/${u.id}`);
+  assert.equal(page.status, 200);
+  assert.match(page.text, /2024999001/);
+  assert.doesNotMatch(page.text, /name="universityId"|name="password"/);
+  const saved = await admin.post(`/admin/users/${u.id}`, {
+    name: 'Edited Name', email: 'editme@safefind.example', phone: '01811111111',
+    role: 'member', affiliation: 'staff', lang: 'bn', universityId: '9999999999', password: 'Stolen@12345'
+  }, { from: `/admin/users/${u.id}` });
+  assert.equal(saved.status, 302, saved.text);
+  const after = await userModel.findById(u.id);
+  assert.equal(after.name, 'Edited Name');
+  assert.equal(after.phone, '01811111111');
+  assert.equal(after.affiliation, 'staff');
+  assert.equal(after.lang, 'bn');
+  assert.equal(after.universityId, '2024999001');
+  const login = await new Client(srv.base).post('/auth/login', { email: 'editme@safefind.example', password: 'Editme@12345' }, { from: '/auth/login' });
+  assert.equal(login.status, 302);
+  assert.doesNotMatch(login.location || '', /\/auth\/login/);
+});
+
+test('an administrator can delete an account and free the email and ID, but not their own', async () => {
+  const u = await scratchUser('deleteme@safefind.example', 'Delete@12345', { universityId: '2024999002' });
+  const victim = new Client(srv.base);
+  await victim.login('deleteme@safefind.example', 'Delete@12345');
+  const admin = await signedIn(srv.base, 'admin');
+  const self = await userModel.findByEmail('admin@safefind.example');
+  const refused = await admin.post(`/admin/users/${self.id}/delete`, {}, { from: '/admin/users' });
+  assert.equal(refused.status, 302);
+  assert.equal((await userModel.findById(self.id)).deletedAt, null);
+  const listed = await admin.get('/admin/users');
+  assert.match(listed.text, /At least one active administrator must remain/);
+
+  const yes = await admin.post(`/admin/users/${u.id}/delete`, {}, { from: `/admin/users/${u.id}` });
+  assert.equal(yes.status, 302);
+  const gone = await userModel.findById(u.id);
+  assert.ok(gone.deletedAt);
+  assert.equal(gone.universityId, null);
+  assert.equal(gone.passwordHash, null);
+  assert.notEqual(gone.email, 'deleteme@safefind.example');
+  assert.equal((await victim.get('/dashboard')).status, 302);
+  const again = await new Client(srv.base).post('/auth/login', { email: 'deleteme@safefind.example', password: 'Delete@12345' }, { from: '/auth/login' });
+  assert.equal(again.status, 401);
+  const hidden = await admin.get('/admin/users');
+  assert.doesNotMatch(hidden.text, /Deleted account/);
+  const archive = await admin.get('/admin/users?status=deleted');
+  assert.match(archive.text, /Deleted account/);
+  const reuse = await scratchUser('deleteme@safefind.example', 'Delete@12345', { universityId: '2024999002' });
+  assert.notEqual(reuse.id, u.id);
+});
+
+test('security and admin can read every case status and past handovers together', async () => {
+  for (const who of ['security', 'admin']) {
+    const c = await signedIn(srv.base, who);
+    const records = await c.get('/security/records');
+    assert.equal(records.status, 200);
+    assert.match(records.text, /Grey hoodie/);
+    assert.match(records.text, /Black smartphone/);
+    assert.match(records.text, /Blue umbrella/);
+    const closed = await c.get('/security/records?status=closed');
+    assert.match(closed.text, /Grey hoodie/);
+    assert.doesNotMatch(closed.text, /Blue umbrella/);
+    const history = await c.get('/security/handover/history');
+    assert.equal(history.status, 200);
+    assert.match(history.text, /Grey hoodie/);
+    assert.match(history.text, /Completed/);
+    const done = await c.get('/security/handover/history?status=completed&q=hoodie');
+    assert.match(done.text, /Grey hoodie/);
+    assert.doesNotMatch(done.text, /Blue steel water bottle/);
+  }
 });
 
 test('changing the password ends other sessions but keeps this one', async () => {

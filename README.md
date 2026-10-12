@@ -70,7 +70,9 @@ Never run production with demo data on.
 - **Nobody decides on their own case.** Staff cannot review, confirm a match for, or verify a claim they or their own report is part of. The approver cannot approve their own report.
 - **Security Cell and administrator accounts do not claim items.** They can read the private details of found items, so a staff member who loses something uses a separate member account.
 - **Matching suggests, staff decide.** A score never changes a case. Staff see the four factors; the owner sees only coarse reasons.
-- **Handover.** Only Security Cell staff, only after they tick that they checked the person's ID. The code is signed, expires (7 days by default) and works once. The administrator can read the desk but not use it.
+- **Handover.** Only Security Cell staff, only after they tick that they checked the person's ID. The code is signed, expires (7 days by default) and works once. The administrator can read the desk but not use it. Past handovers stay on **Handover history** (`/security/handover/history`).
+- **All cases.** Security Cell staff and the administrator have **All cases** (`/security/records`), one list of every report in every status.
+- **Accounts.** An administrator can edit a person's name, email, phone, role, student-or-staff type and language. The password and the ID number cannot be edited. **Delete** signs them out and frees the email and ID for a new account; their reports stay on record. The last active administrator cannot be deleted.
 - **Unclaimed items.** After 90 days (a setting) an item is flagged. Staff choose donate, recycle or transfer. Nothing is removed automatically.
 
 ## Project layout

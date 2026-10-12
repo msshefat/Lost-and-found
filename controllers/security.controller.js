@@ -13,6 +13,9 @@ const claimModel = require('../models/claim.model');
 const categoryModel = require('../models/category.model');
 const locationModel = require('../models/location.model');
 const { CASE, CLAIM, IN_CUSTODY } = require('../config/statuses');
+
+const ALL_CASE_STATUSES = Object.values(CASE);
+const HANDOVER_FILTERS = ['pending', 'expired', 'completed', 'cancelled'];
 const { parseInputValue } = require('../utils/format');
 const { validate, echo } = require('../validators');
 const schemas = require('../validators/schemas');
@@ -50,6 +53,25 @@ module.exports = wrap({
     ]);
     res.render('security/overview', {
       pageTitle: res.locals.t('nav_overview'), ...shell('/security'), summary, queue: queue.rows, pending: pending.slice(0, 5), waiting: waiting.slice(0, 5)
+    });
+  },
+
+  async records(req, res) {
+    const filters = {
+      status: oneOfOr(req.query.status, ALL_CASE_STATUSES),
+      type: oneOfOr(req.query.type, ['lost', 'found']),
+      q: shortText(req.query.q)
+    };
+    const list = await cases.listForStaff({
+      statuses: filters.status ? [filters.status] : ALL_CASE_STATUSES,
+      type: filters.type, q: filters.q, newest: true, page: pageNum(req)
+    });
+    if (isPartial(req)) {
+      res.set('Cache-Control', 'no-store');
+      return res.render('partials/list-results', { list, listBase: '/security/cases/', pagerBase: '/security/records', params: filters, progress: false, filtered: Boolean(filters.status || filters.type || filters.q), emptyKind: 'staff' });
+    }
+    return res.render('security/records', {
+      pageTitle: res.locals.t('nav_all_cases'), ...shell('/security/records'), filters, list, statuses: ALL_CASE_STATUSES
     });
   },
 
@@ -203,6 +225,17 @@ module.exports = wrap({
   },
 
   handoverPage: (req, res) => handoverPage(req, res),
+
+  async handoverHistory(req, res) {
+    const filters = {
+      status: oneOfOr(req.query.status, HANDOVER_FILTERS),
+      q: shortText(req.query.q)
+    };
+    const list = await handovers.listHistory({ ...filters, page: pageNum(req) });
+    res.render('security/handover-history', {
+      pageTitle: res.locals.t('handover_history_title'), ...shell('/security/handover/history'), filters, list, statuses: HANDOVER_FILTERS
+    });
+  },
 
   async handoverLookup(req, res) {
     const { values, errors, ok } = validate(req.body, { code: schemas.handover.code });

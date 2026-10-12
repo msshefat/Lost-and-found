@@ -60,7 +60,11 @@
     <% var isActive = function (href) {
          if (activePath === href) return true;
          var roots = ['/dashboard', '/security', '/admin', '/approver'];
-         return roots.indexOf(href) === -1 && activePath.indexOf(href + '/') === 0;
+         if (roots.indexOf(href) !== -1 || activePath.indexOf(href + '/') !== 0) return false;
+         var items = (nav && nav.workspace) || [];
+         return !items.some(function (other) {
+           return other.href !== href && other.href.indexOf(href + '/') === 0 && (activePath === other.href || activePath.indexOf(other.href + '/') === 0);
+         });
        }; %>
     <% if (nav && nav.workspace.length) { %>
     <div class="side-group">

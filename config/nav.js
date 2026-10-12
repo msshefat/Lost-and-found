@@ -11,11 +11,13 @@ const workspace = {
   member: [{ href: '/dashboard', key: 'nav_dashboard', icon: 'home' }],
   security: [
     { href: '/security', key: 'nav_overview', icon: 'home' },
+    { href: '/security/records', key: 'nav_all_cases', icon: 'list' },
     { href: '/security/queue', key: 'nav_review_queue', icon: 'clipboard' },
     { href: '/security/inventory', key: 'nav_inventory', icon: 'box' },
     { href: '/security/matches', key: 'nav_matches', icon: 'search' },
     { href: '/security/claims', key: 'nav_claims', icon: 'shield' },
     { href: '/security/handover', key: 'nav_handover', icon: 'qr' },
+    { href: '/security/handover/history', key: 'nav_handover_history', icon: 'clock' },
     { href: '/security/unclaimed', key: 'nav_unclaimed', icon: 'clock' }
   ],
   approver: [{ href: '/approver', key: 'nav_approvals', icon: 'clipboard' }],
@@ -29,6 +31,8 @@ const workspace = {
     { href: '/admin/settings', key: 'nav_settings', icon: 'settings' },
     { href: '/admin/analytics', key: 'nav_analytics', icon: 'chart' },
     { href: '/admin/audit', key: 'nav_audit', icon: 'clipboard' },
+    { href: '/security/records', key: 'nav_all_cases', icon: 'list' },
+    { href: '/security/handover/history', key: 'nav_handover_history', icon: 'clock' },
     { href: '/security', key: 'nav_security_view', icon: 'shield' }
   ]
 };

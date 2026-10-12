@@ -13,6 +13,7 @@ const act = requireRole(ROLES.SECURITY);
 router.use((req, res, next) => { res.locals.canAct = Boolean(req.user && req.user.role === ROLES.SECURITY); next(); });
 
 router.get('/', read, sec.overview);
+router.get('/records', read, sec.records);
 router.get('/queue', read, sec.queue);
 router.get('/cases/:ref', read, sec.caseDetail);
 router.post('/cases/:ref/review', act, sec.review);
@@ -33,6 +34,7 @@ router.post('/claims/:id/request-proof', act, sec.claimProof);
 router.post('/claims/:id/reject', act, sec.claimReject);
 router.post('/claims/:id/renew', act, sec.handoverRenew);
 
+router.get('/handover/history', read, sec.handoverHistory);
 router.get('/handover', read, sec.handoverPage);
 router.post('/handover/lookup', act, limiter.scan, sec.handoverLookup);
 router.post('/handover/complete', act, limiter.scan, sec.handoverComplete);

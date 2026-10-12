@@ -9,6 +9,7 @@ const analytics = require('../services/analytics.service');
 const catalog = require('../services/catalog.service');
 const settingsService = require('../services/settings.service');
 const auditModel = require('../models/audit.model');
+const userModel = require('../models/user.model');
 const config = require('../config');
 const { ALL_ROLES } = require('../config/roles');
 const { USER } = require('../config/statuses');
@@ -18,11 +19,25 @@ const { pageNum, oneOfOr, intOr, shortText, perform, rejectInput, isDomainError,
 
 const shell = (active) => ({ shell: 'app', active });
 
+async function renderUser(req, res, next, id, extra = {}) {
+  const account = await userModel.findById(id);
+  if (!account) return next();
+  const row = await withProof(account);
+  const values = extra.values || {
+    name: account.name, email: account.deletedAt ? '' : account.email, phone: account.phone || '',
+    role: account.role, affiliation: account.affiliation || '', lang: account.lang || 'en'
+  };
+  return res.status(extra.status || 200).render('admin/user', {
+    pageTitle: account.name, ...shell('/admin/users'), account: row, values, roles: ALL_ROLES,
+    errors: extra.errors || {}, formError: extra.formError || null
+  });
+}
+
 // Password hashes never leave the model layer.
 const safeUser = (u) => ({
   id: u.id, name: u.name, email: u.email, role: u.role, affiliation: u.affiliation, universityId: u.universityId, phone: u.phone,
   status: u.status, emailVerified: u.emailVerified, invited: !u.passwordHash, createdAt: u.createdAt, lastLoginAt: u.lastLoginAt,
-  verificationMethod: u.verificationMethod, idProofId: null
+  verificationMethod: u.verificationMethod, idProofId: null, lang: u.lang, deletedAt: u.deletedAt
 });
 
 // People who joined with an ID card get a link to their latest photo's review page.
@@ -51,7 +66,7 @@ module.exports = wrap({
   async users(req, res) {
     const filters = {
       role: oneOfOr(req.query.role, ALL_ROLES),
-      status: oneOfOr(req.query.status, Object.values(USER)),
+      status: oneOfOr(req.query.status, Object.values(USER).concat('deleted')),
       q: shortText(req.query.q)
     };
     const list = await userService.list({ ...filters, page: pageNum(req) });
@@ -105,6 +120,33 @@ module.exports = wrap({
     const id = intOr(req.params.id);
     if (!id) return next();
     return perform(req, res, { run: () => userService.reactivate(req.user, id, clientIp(req)), success: 'flash_user_reactivated', to: '/admin/users' });
+  },
+
+  userForm(req, res, next) {
+    const id = intOr(req.params.id);
+    if (!id) return next();
+    return renderUser(req, res, next, id);
+  },
+
+  async userUpdate(req, res, next) {
+    const id = intOr(req.params.id);
+    if (!id) return next();
+    const { values, errors, ok } = validate(req.body, schemas.accountEdit);
+    if (!ok) return renderUser(req, res, next, id, { values, errors, status: 400 });
+    try {
+      await userService.updateAccount(req.user, id, values, clientIp(req));
+      req.flash('success', 'flash_user_updated');
+      return res.redirect(`/admin/users/${id}`);
+    } catch (err) {
+      if (!isDomainError(err)) throw err;
+      return renderUser(req, res, next, id, { values, formError: { key: errorKey(err), params: err }, status: 400 });
+    }
+  },
+
+  async userDelete(req, res, next) {
+    const id = intOr(req.params.id);
+    if (!id) return next();
+    return perform(req, res, { run: () => userService.remove(req.user, id, clientIp(req)), success: 'flash_user_deleted', to: '/admin/users' });
   },
 
   // ---------------------------------------------------------------- categories and places

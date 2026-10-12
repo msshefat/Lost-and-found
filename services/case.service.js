@@ -276,13 +276,13 @@ async function listMine(user, { type, status, page = 1 } = {}) {
   return { ...r, rows: await decorate(r.rows) };
 }
 
-async function listForStaff({ statuses, type, q, flaggedOnly, page = 1, pageSize = 15 } = {}) {
+async function listForStaff({ statuses, type, q, flaggedOnly, newest = false, page = 1, pageSize = 15 } = {}) {
   const needle = String(q || '').trim().toLowerCase();
   let rows = (await caseModel.all()).filter((c) =>
     (!statuses || statuses.includes(c.status)) && (!type || c.type === type) && (!flaggedOnly || c.retentionFlaggedAt) &&
     (!needle || c.ref.toLowerCase().includes(needle) || c.title.toLowerCase().includes(needle) || c.description.toLowerCase().includes(needle) || (c.storageSlot || '').toLowerCase().includes(needle))
   );
-  rows.sort((a, b) => a.createdAt - b.createdAt);
+  rows.sort((a, b) => (newest ? b.createdAt - a.createdAt : a.createdAt - b.createdAt));
   const p = paginate(rows, page, pageSize);
   return { ...p, rows: await decorate(p.rows) };
 }

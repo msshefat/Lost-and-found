@@ -11,10 +11,13 @@ router.get('/', admin.dashboard);
 
 router.get('/users', admin.users);
 router.post('/users/invite', admin.invite);
+router.get('/users/:id', admin.userForm);
+router.post('/users/:id', admin.userUpdate);
 router.post('/users/:id/approve', admin.approve);
 router.post('/users/:id/suspend', admin.suspend);
 router.post('/users/:id/reactivate', admin.reactivate);
 router.post('/users/:id/resend-invite', admin.resendInvite);
+router.post('/users/:id/delete', admin.userDelete);
 
 // ID card photos of people who registered without a university e-mail address.
 router.get('/id-reviews', idr.list);

@@ -27,6 +27,9 @@ CREATE TABLE users (
   password_changed_at TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_login_at       TIMESTAMPTZ,
+  -- Set when an administrator deletes the account. The row stays so cases, claims and the audit
+  -- log keep their link. The e-mail and university ID are cleared, so both can be registered again.
+  deleted_at          TIMESTAMPTZ,
   CONSTRAINT users_active_has_password CHECK (status <> 'active' OR password_hash IS NOT NULL)
 );
 CREATE UNIQUE INDEX users_email_key ON users (email);

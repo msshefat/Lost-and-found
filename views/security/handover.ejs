@@ -1,5 +1,8 @@
 <% var assets = { scripts: canAct ? ['/vendor/jsqr.js', '/js/handover-scanner.js'] : [] }; %><%- include('/partials/top', assets) %>
-<div class="page-head"><div><h1><%= t('handover_title') %></h1><p><%= t('handover_sub') %></p></div></div>
+<div class="page-head">
+  <div><h1><%= t('handover_title') %></h1><p><%= t('handover_sub') %></p></div>
+  <a class="btn btn-secondary" href="/security/handover/history"><%= t('handover_history_link') %></a>
+</div>
 <div class="layout-2">
   <div class="stack">
     <% if (canAct) { %>

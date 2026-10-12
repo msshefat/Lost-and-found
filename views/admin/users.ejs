@@ -36,6 +36,7 @@
         <select class="select" id="status" name="status">
           <option value=""><%= t('track_all_status') %></option>
           <% ['pending', 'active', 'suspended'].forEach(function (s) { %><option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= t('user_st_' + s) %></option><% }) %>
+          <option value="deleted" <%= filters.status === 'deleted' ? 'selected' : '' %>><%= t('users_deleted') %></option>
         </select>
       </div>
       <div class="field"><button class="btn btn-primary" type="submit"><%- icon('search') %><%= t('browse_apply') %></button></div>
@@ -49,18 +50,20 @@
         <tbody>
           <% list.rows.forEach(function (u) { %>
           <tr>
-            <td><span class="title"><%= u.name %></span><span class="sub"><%= u.email %><% if (u.universityId) { %> · <%= u.universityId %><% } %></span></td>
+            <td><a class="title" href="/admin/users/<%= u.id %>"><%= u.name %></a><span class="sub"><% if (!u.deletedAt) { %><%= u.email %><% } %><% if (u.universityId) { %><% if (!u.deletedAt) { %> · <% } %><%= u.universityId %><% } %></span></td>
             <td><%= t(roleKey[u.role]) %></td>
-            <td><%- include('/partials/chip', { kind: 'user', value: u.status }) %><% if (u.verificationMethod === 'id_card') { %> <span class="chip chip-blue"><%= t('users_via_id') %></span><% } %><% if (u.invited) { %> <span class="chip chip-gray"><%= t('users_invited') %></span><% } else if (!u.emailVerified) { %> <span class="chip chip-gray"><%= t('admin_unverified') %></span><% } %></td>
+            <td><% if (u.deletedAt) { %><span class="chip chip-gray"><%= t('users_deleted') %></span><% } else { %><%- include('/partials/chip', { kind: 'user', value: u.status }) %><% } %><% if (u.verificationMethod === 'id_card') { %> <span class="chip chip-blue"><%= t('users_via_id') %></span><% } %><% if (u.invited) { %> <span class="chip chip-gray"><%= t('users_invited') %></span><% } else if (!u.emailVerified && !u.deletedAt) { %> <span class="chip chip-gray"><%= t('admin_unverified') %></span><% } %></td>
             <td class="nowrap"><%= u.lastLoginAt ? fmt.date(u.lastLoginAt) : '—' %></td>
             <td>
               <div class="table-actions">
+                <% if (!u.deletedAt) { %><a class="btn btn-secondary btn-sm" href="/admin/users/<%= u.id %>"><%= t('users_edit') %></a><% } %>
                 <% if (u.status === 'pending' && u.emailVerified && u.verificationMethod === 'id_card') { %>
                   <% if (u.idProofId) { %><a class="btn btn-primary btn-sm" href="/admin/id-reviews/<%= u.idProofId %>"><%= t('idr_review') %></a><% } %>
                 <% } else if (u.status === 'pending' && u.emailVerified) { %><form class="inline-form" method="post" action="/admin/users/<%= u.id %>/approve"><%- csrfField() %><button class="btn btn-primary btn-sm" type="submit"><%= t('admin_approve') %></button></form><% } %>
                 <% if (u.invited && u.status !== 'suspended') { %><form class="inline-form" method="post" action="/admin/users/<%= u.id %>/resend-invite"><%- csrfField() %><button class="btn btn-secondary btn-sm" type="submit"><%= t('users_resend_invite') %></button></form><% } %>
                 <% if (u.status === 'active' && u.id !== user.id) { %><form class="inline-form" method="post" action="/admin/users/<%= u.id %>/suspend" data-confirm="<%= t('users_suspend_confirm', { name: u.name }) %>"><%- csrfField() %><button class="btn btn-danger btn-sm" type="submit"><%= t('users_suspend') %></button></form><% } %>
-                <% if (u.status === 'suspended') { %><form class="inline-form" method="post" action="/admin/users/<%= u.id %>/reactivate"><%- csrfField() %><button class="btn btn-secondary btn-sm" type="submit"><%= t('users_reactivate') %></button></form><% } %>
+                <% if (u.status === 'suspended' && !u.deletedAt) { %><form class="inline-form" method="post" action="/admin/users/<%= u.id %>/reactivate"><%- csrfField() %><button class="btn btn-secondary btn-sm" type="submit"><%= t('users_reactivate') %></button></form><% } %>
+                <% if (!u.deletedAt && u.id !== user.id) { %><form class="inline-form" method="post" action="/admin/users/<%= u.id %>/delete" data-confirm="<%= t('users_delete_confirm', { name: u.name }) %>"><%- csrfField() %><button class="btn btn-danger btn-sm" type="submit"><%= t('users_delete') %></button></form><% } %>
               </div>
             </td>
           </tr>

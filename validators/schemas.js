@@ -99,6 +99,15 @@ module.exports = {
     phone: v.optional(v.line(20), v.pattern(PHONE, 'err_phone')),
     lang: v.field(v.line(2), v.oneOf(['en', 'bn']))
   },
+  // Administrator edit. Password and university ID are not fields, so they cannot be submitted.
+  accountEdit: {
+    name: v.field(v.line(80), v.need(), v.minLen(2)),
+    email: v.field(v.lower(), v.need(), v.pattern(EMAIL_LOOSE, 'err_email')),
+    phone: v.optional(v.line(20), v.pattern(PHONE, 'err_phone')),
+    role: v.field(v.line(20), v.oneOf(ALL_ROLES)),
+    affiliation: v.optional(v.line(10), v.oneOf(['student', 'staff'])),
+    lang: v.field(v.line(2), v.oneOf(['en', 'bn']))
+  },
 
   report: caseFields(),
   intake: {

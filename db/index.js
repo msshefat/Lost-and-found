@@ -33,6 +33,11 @@ function mapError(err) {
   return err;
 }
 
+// Columns added after a database was first created. Safe to run every start.
+async function ensureColumns() {
+  await backend.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ');
+}
+
 async function setupPglite() {
   const { PGlite } = require('@electric-sql/pglite');
   const db = new PGlite();
@@ -57,6 +62,7 @@ async function setupPglite() {
       }
     }
   };
+  await ensureColumns();
 }
 
 async function setupPostgres() {
@@ -97,6 +103,7 @@ async function setupPostgres() {
       }
     }
   };
+  await ensureColumns();
 }
 
 async function init() {

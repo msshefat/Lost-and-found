@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.6.0
+
+An administrator can correct an account and remove it. Security Cell staff and the administrator can see every case status in one list, and can look up handovers after they are finished.
+
+### Added
+
+- On Users, **Edit** changes the name, email, phone, role, student or staff, and language. The password and the ID number are shown and cannot be changed.
+- **Delete** signs the person out, frees the email and the ID number for a new account, and keeps their reports. Deleted accounts are listed with the status filter "Deleted". The last active administrator cannot be deleted.
+- **All cases** (`/security/records`) for Security Cell staff and the administrator: every report, with a status filter that includes all statuses.
+- **Handover history** (`/security/handover/history`): completed, cancelled, open and expired handovers, without showing the code.
+
+### Changed
+
+- `users.deleted_at` is in `docs/schema.sql`. A database created before this version gets the column the next time the app starts.
+
 ## 1.5.0
 
 The existing pages now read and write PostgreSQL. Restarting the server no longer drops cases, accounts or claims.

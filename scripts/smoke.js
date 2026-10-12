@@ -25,11 +25,11 @@ const check = (label, res, expected) => {
 
   const pages = {
     student: ['/dashboard', '/report', '/report?type=found', '/track', '/track?type=lost&status=open', '/track?partial=1&status=open', '/items/SF-2026-0009/claim', '/notifications', '/account', '/items/SF-2026-0001'],
-    security: ['/security', '/security/queue', '/security/queue?status=open&type=found', '/security/queue?partial=1&status=open', '/security/queue?partial=1&status=rejected', '/security/inventory', '/security/intake', '/security/matches', '/security/claims', '/security/claims?tab=verified', '/security/claims?tab=closed',
-      '/security/handover', '/security/unclaimed', '/report', '/track', '/notifications', '/account', '/items/SF-2026-0001'],
+    security: ['/security', '/security/queue', '/security/queue?status=open&type=found', '/security/queue?partial=1&status=open', '/security/queue?partial=1&status=rejected', '/security/records', '/security/records?status=closed', '/security/records?partial=1&status=open', '/security/inventory', '/security/intake', '/security/matches', '/security/claims', '/security/claims?tab=verified', '/security/claims?tab=closed',
+      '/security/handover', '/security/handover/history', '/security/handover/history?status=completed', '/security/unclaimed', '/report', '/track', '/notifications', '/account', '/items/SF-2026-0001'],
     approver: ['/approver', '/approver/history', '/track', '/notifications', '/account'],
     admin: ['/admin', '/approver', '/approver/history', '/admin/users', '/admin/id-reviews', '/admin/id-reviews?status=approved', '/admin/id-reviews?status=rejected', '/admin/users?role=security&status=active&q=a', '/admin/categories', '/admin/locations', '/admin/settings', '/admin/analytics', '/admin/audit', '/admin/audit?action=auth.login',
-      '/security', '/security/queue', '/security/matches', '/security/handover', '/security/unclaimed', '/security/inventory', '/security/claims', '/account']
+      '/security', '/security/queue', '/security/records', '/security/matches', '/security/handover', '/security/handover/history', '/security/unclaimed', '/security/inventory', '/security/claims', '/account']
   };
   for (const [who, list] of Object.entries(pages)) {
     const c = await signedIn(srv.base, who);

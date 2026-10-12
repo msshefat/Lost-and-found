@@ -21,7 +21,8 @@ function toUser(row) {
     lang: row.lang,
     passwordChangedAt: dt(row.password_changed_at),
     createdAt: dt(row.created_at),
-    lastLoginAt: dt(row.last_login_at)
+    lastLoginAt: dt(row.last_login_at),
+    deletedAt: dt(row.deleted_at)
   };
 }
 
@@ -53,7 +54,7 @@ const USER_COLUMNS = {
   name: 'name', email: 'email', passwordHash: 'password_hash', role: 'role', affiliation: 'affiliation',
   universityId: 'university_id', phone: 'phone', status: 'status', emailVerified: 'email_verified',
   verificationMethod: 'verification_method', lang: 'lang', passwordChangedAt: 'password_changed_at',
-  lastLoginAt: 'last_login_at', createdAt: 'created_at'
+  lastLoginAt: 'last_login_at', createdAt: 'created_at', deletedAt: 'deleted_at'
 };
 
 async function update(n, patch) {
@@ -77,8 +78,12 @@ async function update(n, patch) {
 async function list({ role, status, q, page = 1, pageSize = 15 } = {}) {
   const where = [];
   const params = [];
+  if (status === 'deleted') where.push('deleted_at IS NOT NULL');
+  else {
+    where.push('deleted_at IS NULL');
+    if (status) { params.push(status); where.push(`status = $${params.length}`); }
+  }
   if (role) { params.push(role); where.push(`role = $${params.length}`); }
-  if (status) { params.push(status); where.push(`status = $${params.length}`); }
   if (q) {
     params.push(String(q).toLowerCase());
     const n = `$${params.length}`;
@@ -96,13 +101,14 @@ async function list({ role, status, q, page = 1, pageSize = 15 } = {}) {
 }
 
 const idsVerifiedBy = async (method) => (await query(
-  'SELECT id FROM users WHERE verification_method = $1 AND email_verified',
+  'SELECT id FROM users WHERE verification_method = $1 AND email_verified AND deleted_at IS NULL',
   [method]
 )).map((r) => id(r.id));
 
 async function count(filter = {}) {
   const where = [];
   const params = [];
+  where.push('deleted_at IS NULL');
   if (filter.role) { params.push(filter.role); where.push(`role = $${params.length}`); }
   if (filter.status) { params.push(filter.status); where.push(`status = $${params.length}`); }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
