@@ -21,6 +21,20 @@ async function claimFormData(req, found) {
 }
 
 module.exports = wrap({
+  async list(req, res) {
+    const rows = await claims.listMine(req.user);
+    const list = await Promise.all(rows.map(async (c) => {
+      const h = await handovers.forClaim(c.id);
+      const handover = c.status === 'verified' && h && h.status === 'pending'
+        ? { code: handovers.shortCode(h), expiresAt: h.expiresAt, expired: new Date(h.expiresAt) < new Date() }
+        : null;
+      return { claim: c, handover };
+    }));
+    res.render('member/claims', {
+      pageTitle: res.locals.t('nav_my_claims'), shell: 'app', active: '/claims', list
+    });
+  },
+
   async form(req, res, next) {
     const ref = cleanRef(req.params.ref);
     const found = ref && await caseModel.findByRef(ref);
@@ -73,7 +87,7 @@ module.exports = wrap({
       ? { code: handovers.shortCode(h), expiresAt: h.expiresAt, expired: new Date(h.expiresAt) < new Date() }
       : null;
     return res.render('member/claim', {
-      pageTitle: res.locals.t('claim_page_title'), shell: 'app', active: '/track', claim, handover, errors: {}, formError: null
+      pageTitle: res.locals.t('claim_page_title'), shell: 'app', active: '/claims', claim, handover, errors: {}, formError: null
     });
   },
 

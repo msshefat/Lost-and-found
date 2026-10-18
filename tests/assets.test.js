@@ -52,7 +52,7 @@ test('every local script, stylesheet, image and font that a page uses can be fet
   const anon = new Client(srv.base);
   const pages = {
     anon: ['/', '/browse', '/about', '/auth/login', '/auth/register', '/auth/register/id-card', '/auth/forgot', '/items/SF-2026-0009', '/nope'],
-    student: ['/dashboard', '/report', '/track', '/notifications', '/account', '/items/SF-2026-0001', '/items/SF-2026-0009/claim'],
+    student: ['/dashboard', '/report', '/track', '/claims', '/notifications', '/account', '/items/SF-2026-0001', '/items/SF-2026-0009/claim'],
     security: ['/security', '/security/queue', '/security/records', '/security/inventory', '/security/intake', '/security/matches', '/security/claims', '/security/handover', '/security/handover/history', '/security/unclaimed'],
     approver: ['/approver', '/approver/cases/SF-2026-0003'],
     admin: ['/admin', '/admin/users', '/admin/id-reviews', '/admin/categories', '/admin/locations', '/admin/settings', '/admin/analytics', '/admin/audit', '/security/records', '/security/handover/history']

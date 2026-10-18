@@ -91,15 +91,8 @@
     </section>
     <% } %>
 
-    <% if (level === 'staff' && notes && notes.length) { %>
-    <section class="panel">
-      <h2><%= t('case_notes') %></h2>
-      <ul class="list">
-        <% notes.forEach(function (n) { %>
-        <li><strong><%= t('note_kind_' + n.kind) %></strong> <span class="small muted"><%= fmt.dateTime(n.createdAt) %></span><br><span class="prose"><%= n.findings %></span></li>
-        <% }) %>
-      </ul>
-    </section>
+    <% if (level === 'owner' || level === 'staff') { %>
+    <%- include('/partials/case-thread', { view: view, notes: notes, updates: updates, canNote: false, canUpdate: canUpdate, canDeleteNote: canAct, updateBase: '/items/' + view.ref + '/updates' }) %>
     <% } %>
   </div>
 </div>

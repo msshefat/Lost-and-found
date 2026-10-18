@@ -132,6 +132,7 @@ module.exports = {
     note: v.optional(v.text(500)),
     storageSlot: v.optional(v.line(20), v.pattern(SLOT, 'err_slot'))
   },
+  caseUpdate: { body: v.optional(v.text(1500)) },
   note: {
     kind: v.field(v.line(10), v.oneOf(['note', 'cctv'])),
     camera: v.optional(v.line(80)),

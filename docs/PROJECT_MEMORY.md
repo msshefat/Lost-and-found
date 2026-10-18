@@ -1,7 +1,7 @@
 # SafeFind project memory
 
-App version: 1.6.0
-Last updated: 2026-10-12
+App version: 1.7.0
+Last updated: 2026-10-18
 
 This file is the memory of the SafeFind project. It says what the project is, how the owner wants the work done, what state the code is in, which decisions were made and why, what is still open, and what changed in each version. If the assistant, the Claude account or the chat is lost, give this file and the latest project zip to a new assistant or a new team member, and the work continues from where it stopped, without explaining the project again.
 
@@ -144,6 +144,8 @@ Original documents (the owner keeps these; they were in the Claude Project named
 | Analytics (charts and a hotspot map), audit log, administrator settings | Works |
 | Administrator edits an account (not the password or the ID) and can delete it; the email and ID can be registered again | Works (1.6.0) |
 | Security Cell and administrator: all case statuses in one list, and a handover history | Works (1.6.0) |
+| The reporter reads Security Cell notes; both sides can post an update with a photo; removing a note, update or photo leaves a line in the case history | Works (1.7.0) |
+| Claims in the personal menu, with the QR and handover code while the claim is verified | Works (1.7.0) |
 | Home page | Built in 1.3.1 from the owner's concept as drawn: eyebrow labels, the underlined headline, three tiles, a stats box with the board and a follow card, the campus photo, a four-step strip, four features, a before-and-after table, who can use it, team and contact. The hero image is the concept's ticket diagram: a Lost and a Found ticket, the Security Cell step and the return to the owner. | Works |
 | English and Bangla | Public, sign-in and member screens are translated. Staff and administrator screens fall back to English where a string is not translated. |
 | Data storage | PostgreSQL, through `DATABASE_URL`. The server applies `docs/schema.sql` to an empty database, then seeds demo data once. `database/safefind.sql` is a dump of that database. Tests use the same schema on PGlite. |
@@ -151,7 +153,7 @@ Original documents (the owner keeps these; they were in the Claude Project named
 
 ### 5.2 Stack
 
-Node.js 20 or newer (tested on 22), Express 4, EJS 3, one custom stylesheet with light and dark themes, plain JavaScript in the browser, `node --test` for tests. Locale keys: 963 in English, 592 in Bangla.
+Node.js 20 or newer (tested on 22), Express 4, EJS 3, one custom stylesheet with light and dark themes, plain JavaScript in the browser, `node --test` for tests. Locale keys: 995 in English, 625 in Bangla.
 
 Runtime dependencies:
 
@@ -223,7 +225,9 @@ docs/             PROJECT_MEMORY.md, CHANGELOG.md, DB_NOTES.md, schema.sql, SAFE
 | Matching (FR-10 to FR-12) | `services/matching.service.js`, `views/partials/match-card.ejs` |
 | Notifications (FR-13) | `services/notification.service.js`, `models/notification.model.js`, `services/realtime.service.js`, `public/js/realtime.js` |
 | Claims and ownership check (FR-14, FR-15) | `services/claim.service.js`, `controllers/claim.controller.js` |
-| Investigation and CCTV notes (FR-16) | `case.service.js` (`addNote`), `models/investigation.model.js` |
+| Investigation and CCTV notes (FR-16) | `case.service.js` (`addNote`, `deleteNote`, `getForViewer`), `models/investigation.model.js`. The reporter reads the findings; the camera name and time window stay with staff |
+| Updates on a case, with photos | `case.service.js` (`addUpdate`, `deleteUpdate`, `deleteUpdateImage`), `models/caseUpdate.model.js`, `views/partials/case-thread.ejs` |
+| The person's own claims, including the QR | `controllers/claim.controller.js` (`list`), `views/member/claims.ejs`, nav key `nav_my_claims` |
 | QR handover (FR-17 to FR-20) | `services/handover.service.js`, `public/js/handover-scanner.js` |
 | Analytics (FR-21) | `services/analytics.service.js`, `views/admin/analytics.ejs`, `public/js/analytics.js` |
 | Administration (FR-22) | `controllers/admin.controller.js`, `services/user.service.js`, `services/settings.service.js`, `services/catalog.service.js` |
@@ -389,6 +393,18 @@ Version 1.3.0 redesigned the home page from the owner's concept and was rejected
 | Where all statuses are listed | `/security/records`, for Security Cell staff and the administrator | The review queue, inventory and unclaimed lists are each one slice of the work. This one shows every status together |
 | Where past handovers are listed | `/security/handover/history`, same two roles | The desk only shows codes that are still open. Completed and cancelled ones stay, without the code itself |
 
+### 6.7 Decisions made in version 1.7.0
+
+| Question | Choice | Why |
+|---|---|---|
+| Who reads a note | The person who reported the case, plus Security Cell and the administrator | The owner asked that the complainant see the note, not only the Security Cell |
+| Camera name and time window | Still only Security Cell and the administrator | Those details identify a camera. The findings are enough for the reporter |
+| Who else sees the thread | Not the public, not another student, not the approver | A note can describe the item more closely than the public card |
+| Updates | A second panel beside the notes. Security Cell and the reporter can each write, and each can attach a photo | The owner asked for a way to send an update, with a photo from either side |
+| Removing a note, an update or a photo | The row stays, the text or file is cleared, and the timeline says it was removed | The owner asked for a delete option and a history line. The old text is not kept on the page |
+| Who may remove what | Security Cell removes a note. Security Cell or the author removes an update. Security Cell or the reporter removes any photo on that case | A photo can be the wrong picture. The reporter should be able to take it down. The note itself stays a Security Cell record |
+| Where the QR is | **Claims** in the personal menu (`/claims`), and still on the claim page | The owner asked for a Claims menu that shows the QR. It appears while the claim is verified and the code has not expired |
+
 ## 7. Open items
 
 | ID | Item | Why it matters |
@@ -411,6 +427,7 @@ Version 1.3.0 redesigned the home page from the owner's concept and was rejected
 | O-15 | Let a person who has a university e-mail add a second sign-in address later (not requested, not built). | Only if students ask for it. |
 | O-16 | Photos still keep their metadata (O-6); ID card photos may carry GPS. Strip it on upload. | Privacy. |
 | O-17 | Have a Bangla speaker read the new account, all-cases and handover-history strings. | Written here, not checked by a native speaker. |
+| O-18 | Have a Bangla speaker read the new note, update and Claims strings. | Written here, not checked by a native speaker. |
 
 Risks to keep in view:
 
@@ -434,6 +451,7 @@ Repeat the checks with the commands in section 5.7.
 
 | 1.4.0 | `npm test`, `npm run smoke`; a one-off Playwright script that loads the new pages at 1280 and 360 px in light and dark and uploads a photo with the uploader; four deliberate breaks of the security guards (each made a test fail) | 201 of 201 tests (169 before); smoke clean; no sideways scroll at 360 px; photo preview works; the review page loads the photo. The screenshots showed a real bug (the sidebar named the applicant), now fixed and tested. `npm run browser-check` was not extended for the new pages. | Node 22, Linux, headless Chromium 156 through Playwright |
 | 1.6.0 | `npm test` | 205 of 205 tests passed | Node on Linux |
+| 1.7.0 | `npm test` | 206 of 206 tests passed | Node on Linux |
 
 The 1.2.0 tests that are new: `tests/ui.test.js` (10 tests), `tests/images.test.js` (8) and `tests/realtime.test.js` (11, over a real WebSocket connection). The browser check covers the toasts, the uploader, the report steps, live filters, live alerts, text contrast in both themes and both languages, and 360 px width.
 
@@ -444,6 +462,13 @@ In 1.3.1 the home page was also compared with the owner's concept by a one-off s
 Never verified so far: a real Cloudinary account, WebSocket through a real reverse proxy, Safari, Firefox, Windows, a real phone camera, touch drag-and-drop, Node versions other than 22, and the requirement-by-requirement coverage of the proposal (Appendix A lists where each requirement lives, but the 1.2 work did not audit them one by one).
 
 ## 9. Change history (newest first)
+
+### v1.7.0 (2026-10-18) Notes for the reporter, updates with photos, Claims menu
+Asked for: the person who filed the report should see Security Cell notes; Security Cell should be able to send an update, and either side should be able to attach a photo; a photo or a note can be removed, and the history should say that it was removed; the user should have a Claims menu that shows the QR.
+Done: notes and an Updates panel on the case, for the reporter and for Security Cell. Removing a note, an update or a photo clears the content and leaves a timeline line. **Claims** (`/claims`) lists the person's claims and shows the QR and the handover code while the claim is verified.
+Decisions: section 6.7. Camera name and time window stay with Security Cell. The approver and other people do not see the thread.
+Verified: `npm test` (206 passed).
+Open after this: O-18.
 
 ### v1.6.0 (2026-10-12) Account edit and delete, all statuses, handover history
 Asked for: an administrator should be able to delete an account, and edit everything except the password and the ID; handover items should stay visible for later; admin and staff should have one place that shows every status together.
@@ -559,7 +584,7 @@ Statuses were not re-audited in the 1.2 work. The last column says where the req
 | FR-13 | Notify relevant users of a potential match. | `notification.service`, `realtime.service` |
 | FR-14 | Users submit a claim for a potential match. | `claim.service`, `claim.controller` |
 | FR-15 | Tiered ownership verification: basic details first, then private or photo confirmation for high-value items. | `claim.service` |
-| FR-16 | Record CCTV investigation notes. | `case.service` (`addNote`), `investigation.model` |
+| FR-16 | Record CCTV investigation notes. | `case.service` (`addNote`), `investigation.model`. From 1.7.0 the reporter can read the findings; camera details stay with staff |
 | FR-17 | A unique QR code for an approved handover. | `handover.service`, `claim.controller` (`qr`) |
 | FR-18 | Authorized staff scan the QR code and confirm the handover. | `handover.service`, `public/js/handover-scanner.js` |
 | FR-19 | Store date, time, responsible staff member and case information for completed handovers. | `handover.service`, `models/handover.model.js` |

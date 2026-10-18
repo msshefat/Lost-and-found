@@ -44,7 +44,7 @@ test('security headers: strict CSP without inline script or style allowances', a
 
 test('no rendered page contains inline scripts, style attributes or event handlers', async () => {
   const pages = { anon: ['/', '/browse', '/about', '/auth/login', '/auth/register', '/auth/forgot', '/nope'],
-    student: ['/dashboard', '/report', '/track', '/notifications', '/account'],
+    student: ['/dashboard', '/report', '/track', '/claims', '/notifications', '/account'],
     security: ['/security', '/security/queue', '/security/records', '/security/matches', '/security/claims', '/security/handover', '/security/handover/history', '/security/unclaimed', '/security/intake'],
     approver: ['/approver'], admin: ['/admin', '/admin/users', '/admin/categories', '/admin/locations', '/admin/settings', '/admin/analytics', '/admin/audit', '/security/records', '/security/handover/history'] };
   for (const [who, list] of Object.entries(pages)) {
@@ -69,6 +69,7 @@ test('role-based access: every protected route answers correctly for every role'
     '/dashboard': [302, 200, 302, 302, 302],
     '/report': [302, 200, 200, 200, 200],
     '/track': [302, 200, 200, 200, 200],
+    '/claims': [302, 200, 200, 200, 200],
     '/notifications': [302, 200, 200, 200, 200],
     '/account': [302, 200, 200, 200, 200],
     '/security': [302, 403, 200, 403, 200],

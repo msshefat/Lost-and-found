@@ -10,7 +10,9 @@ const claimModel = require('../models/claim.model');
 const { PUBLIC_VISIBLE, CLAIM_ACTIVE } = require('../config/statuses');
 const { ROLES } = require('../config/roles');
 const { MIME_BY_EXT, sendStored } = require('../utils/images');
-const { cleanRef, perform, clientIp } = require('./_helpers');
+const { validate } = require('../validators');
+const schemas = require('../validators/schemas');
+const { cleanRef, intOr, perform, rejectInput, clientIp } = require('./_helpers');
 
 const FILE = /^[a-f0-9]{32}\.(jpg|png|webp)$/;
 
@@ -44,8 +46,32 @@ module.exports = wrap({
     const canAct = req.user.role === ROLES.SECURITY;
     return res.render('items/show', {
       pageTitle: view.titleMasked ? data.category.name : view.title, shell: 'app', active: isStaff ? '/security/queue' : '/track',
-      ...data, matches, myClaim, canClaim, canAct
+      ...data, matches, myClaim, canClaim, canAct, canUpdate: level === 'owner' || canAct
     });
+  },
+
+  async updatePost(req, res, next) {
+    const ref = cleanRef(req.params.ref);
+    if (!ref) return next();
+    const to = `/items/${ref}`;
+    if (req.uploadError) { req.flash('error', `svc_${req.uploadError}`); return res.redirect(to); }
+    const { values, errors, ok } = validate(req.body, schemas.caseUpdate);
+    if (!ok) return rejectInput(req, res, errors, to);
+    return perform(req, res, { run: () => cases.addUpdate(req.user, ref, values.body, req.file || null, clientIp(req)), success: 'flash_update_sent', to });
+  },
+
+  async updateDelete(req, res, next) {
+    const ref = cleanRef(req.params.ref);
+    const id = intOr(req.params.id);
+    if (!ref || !id) return next();
+    return perform(req, res, { run: () => cases.deleteUpdate(req.user, ref, id, clientIp(req)), success: 'flash_update_deleted', to: `/items/${ref}` });
+  },
+
+  async updateImageDelete(req, res, next) {
+    const ref = cleanRef(req.params.ref);
+    const id = intOr(req.params.id);
+    if (!ref || !id) return next();
+    return perform(req, res, { run: () => cases.deleteUpdateImage(req.user, ref, id, clientIp(req)), success: 'flash_image_deleted', to: `/items/${ref}` });
   },
 
   async withdraw(req, res) {
@@ -67,6 +93,14 @@ module.exports = wrap({
     } else {
       const claim = await claimModel.findByProof(name);
       if (claim) allowed = claim.userId === req.user.id || req.user.role === ROLES.SECURITY || req.user.role === ROLES.ADMIN;
+    }
+    if (!allowed) {
+      const updateModel = require('../models/caseUpdate.model');
+      const message = await updateModel.findByImage(name);
+      if (message && message.image) {
+        const owner = await caseModel.findById(message.caseId);
+        allowed = Boolean(owner && ['staff', 'owner'].includes(cases.accessLevel(req.user, owner)));
+      }
     }
     if (!allowed) return next(); // same answer as a missing file
 

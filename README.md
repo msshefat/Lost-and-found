@@ -73,6 +73,8 @@ Never run production with demo data on.
 - **Handover.** Only Security Cell staff, only after they tick that they checked the person's ID. The code is signed, expires (7 days by default) and works once. The administrator can read the desk but not use it. Past handovers stay on **Handover history** (`/security/handover/history`).
 - **All cases.** Security Cell staff and the administrator have **All cases** (`/security/records`), one list of every report in every status.
 - **Accounts.** An administrator can edit a person's name, email, phone, role, student-or-staff type and language. The password and the ID number cannot be edited. **Delete** signs them out and frees the email and ID for a new account; their reports stay on record. The last active administrator cannot be deleted.
+- **Notes and updates.** The person who reported a case can read Security Cell notes. Camera details stay with Security Cell. Either side can send an update and attach a photo. Removing a note, an update or a photo clears it and leaves a line in the case history.
+- **Claims.** **Claims** in the personal menu lists the person's claims. A verified claim shows the QR code and the handover code there.
 - **Unclaimed items.** After 90 days (a setting) an item is flagged. Staff choose donate, recycle or transfer. Nothing is removed automatically.
 
 ## Project layout

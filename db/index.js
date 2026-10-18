@@ -36,6 +36,21 @@ function mapError(err) {
 // Columns added after a database was first created. Safe to run every start.
 async function ensureColumns() {
   await backend.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ');
+  await backend.query('ALTER TABLE investigations ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ');
+  await backend.query(`CREATE TABLE IF NOT EXISTS case_updates (
+    id               BIGSERIAL   PRIMARY KEY,
+    case_id          BIGINT      NOT NULL REFERENCES cases (id) ON DELETE CASCADE,
+    user_id          BIGINT      NOT NULL REFERENCES users (id),
+    body             TEXT        NOT NULL DEFAULT '' CHECK (length(body) <= 1500),
+    image            TEXT,
+    image_mime       TEXT,
+    had_image        BOOLEAN     NOT NULL DEFAULT FALSE,
+    image_deleted_at TIMESTAMPTZ,
+    deleted_at       TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (btrim(body) <> '' OR image IS NOT NULL OR deleted_at IS NOT NULL OR image_deleted_at IS NOT NULL)
+  )`);
+  await backend.query('CREATE INDEX IF NOT EXISTS case_updates_case_idx ON case_updates (case_id, created_at)');
 }
 
 async function setupPglite() {

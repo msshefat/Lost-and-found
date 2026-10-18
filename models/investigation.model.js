@@ -1,5 +1,6 @@
 'use strict';
-// Staff-only notes on a case, including CCTV review (an optional step, per the use case diagram).
+// Notes on a case, including CCTV review. The reporter can read the findings. The camera
+// name and the time window stay with Security Cell and the administrator.
 const { query, one } = require('../db');
 const { id, dt } = require('../db/shape');
 
@@ -8,7 +9,8 @@ function toNote(row) {
   return {
     id: id(row.id), caseId: id(row.case_id), userId: id(row.user_id), kind: row.kind,
     camera: row.camera || '', windowFrom: dt(row.window_from), windowTo: dt(row.window_to),
-    findings: row.findings, createdAt: dt(row.created_at)
+    findings: row.findings, createdAt: dt(row.created_at), deletedAt: dt(row.deleted_at),
+    authorName: row.author_name || ''
   };
 }
 
@@ -24,9 +26,33 @@ async function create(d) {
   return toNote(row);
 }
 
+const get = async (n) => toNote(await one(
+  `SELECT i.*, u.name AS author_name FROM investigations i JOIN users u ON u.id = i.user_id WHERE i.id = $1`,
+  [Number(n)]
+));
+
 const forCase = async (caseId) => (await query(
-  'SELECT * FROM investigations WHERE case_id = $1 ORDER BY created_at DESC, id DESC',
+  `SELECT i.*, u.name AS author_name
+   FROM investigations i JOIN users u ON u.id = i.user_id
+   WHERE i.case_id = $1 ORDER BY i.created_at ASC, i.id ASC`,
   [Number(caseId)]
 )).map(toNote);
 
-module.exports = { create, forCase };
+async function update(n, patch) {
+  const sets = [];
+  const params = [];
+  if (Object.prototype.hasOwnProperty.call(patch, 'findings')) {
+    params.push(patch.findings);
+    sets.push(`findings = $${params.length}`);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'deletedAt')) {
+    params.push(patch.deletedAt);
+    sets.push(`deleted_at = $${params.length}`);
+  }
+  if (!sets.length) return get(n);
+  params.push(Number(n));
+  await query(`UPDATE investigations SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
+  return get(n);
+}
+
+module.exports = { create, get, forCase, update };

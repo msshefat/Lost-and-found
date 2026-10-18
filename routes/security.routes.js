@@ -18,6 +18,10 @@ router.get('/queue', read, sec.queue);
 router.get('/cases/:ref', read, sec.caseDetail);
 router.post('/cases/:ref/review', act, sec.review);
 router.post('/cases/:ref/notes', act, sec.note);
+router.post('/cases/:ref/notes/:id/delete', act, sec.noteDelete);
+router.post('/cases/:ref/updates', act, limiter.uploads, upload.photo, sec.updatePost);
+router.post('/cases/:ref/updates/:id/delete', act, sec.updateDelete);
+router.post('/cases/:ref/updates/:id/image', act, sec.updateImageDelete);
 
 router.get('/inventory', read, sec.inventory);
 router.get('/intake', act, sec.intakeForm);

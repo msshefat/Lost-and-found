@@ -3,6 +3,7 @@
 const personal = [
   { href: '/report', key: 'nav_report', icon: 'plus' },
   { href: '/track', key: 'nav_my_cases', icon: 'list' },
+  { href: '/claims', key: 'nav_my_claims', icon: 'shield' },
   { href: '/notifications', key: 'nav_notifications', icon: 'bell' },
   { href: '/account', key: 'nav_account', icon: 'user' }
 ];

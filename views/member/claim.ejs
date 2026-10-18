@@ -5,7 +5,7 @@
   var reason = claim.status === 'rejected' && claim.verification && claim.verification.note && claim.verification.by !== claim.userId ? claim.verification.note : '';
 %>
 <% var assets = { scripts: ['/js/dropzone.js'] }; %><%- include('/partials/top', assets) %>
-<a class="back-link" href="/track"><%- icon('arrow-left') %><%= t('back') %></a>
+<a class="back-link" href="/claims"><%- icon('arrow-left') %><%= t('nav_my_claims') %></a>
 <div class="page-head">
   <div>
     <div class="cluster"><%- include('/partials/chip', { kind: 'claim', value: claim.status }) %><span class="mono muted"><%= claim.found.ref %></span></div>

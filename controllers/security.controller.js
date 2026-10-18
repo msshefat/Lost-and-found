@@ -126,6 +126,37 @@ module.exports = wrap({
     });
   },
 
+  async noteDelete(req, res, next) {
+    const ref = cleanRef(req.params.ref);
+    const id = intOr(req.params.id);
+    if (!ref || !id) return next();
+    return perform(req, res, { run: () => cases.deleteNote(req.user, ref, id, clientIp(req)), success: 'flash_note_deleted', to: `/security/cases/${ref}` });
+  },
+
+  async updatePost(req, res, next) {
+    const ref = cleanRef(req.params.ref);
+    if (!ref) return next();
+    const to = `/security/cases/${ref}`;
+    if (req.uploadError) { req.flash('error', `svc_${req.uploadError}`); return res.redirect(to); }
+    const { values, errors, ok } = validate(req.body, schemas.caseUpdate);
+    if (!ok) return rejectInput(req, res, errors, to);
+    return perform(req, res, { run: () => cases.addUpdate(req.user, ref, values.body, req.file || null, clientIp(req)), success: 'flash_update_sent', to });
+  },
+
+  async updateDelete(req, res, next) {
+    const ref = cleanRef(req.params.ref);
+    const id = intOr(req.params.id);
+    if (!ref || !id) return next();
+    return perform(req, res, { run: () => cases.deleteUpdate(req.user, ref, id, clientIp(req)), success: 'flash_update_deleted', to: `/security/cases/${ref}` });
+  },
+
+  async updateImageDelete(req, res, next) {
+    const ref = cleanRef(req.params.ref);
+    const id = intOr(req.params.id);
+    if (!ref || !id) return next();
+    return perform(req, res, { run: () => cases.deleteUpdateImage(req.user, ref, id, clientIp(req)), success: 'flash_image_deleted', to: `/security/cases/${ref}` });
+  },
+
   async inventory(req, res) {
     const q = shortText(req.query.q);
     const list = await cases.listForStaff({ statuses: IN_CUSTODY, type: 'found', q, page: pageNum(req) });

@@ -27,6 +27,7 @@ const TONE = {
   'notif_found_received': 'success', 'notif_handover_done': 'success', 'notif_intake_recorded': 'success', 'notif_match_confirmed': 'success',
   'notif_case_rejected': 'error', 'notif_claim_rejected': 'error',
   'notif_approval_needed': 'warn', 'notif_review_needed': 'warn', 'notif_claim_submitted': 'warn', 'notif_proof_received': 'warn',
+  'notif_case_note': 'info', 'notif_case_update': 'info', 'notif_case_update_reply': 'warn',
   'notif_proof_requested': 'warn', 'notif_retention_flagged': 'warn', 'notif_user_awaiting': 'warn', 'notif_match_suggested': 'warn'
 };
 const toneOf = (key) => TONE[key] || 'info';

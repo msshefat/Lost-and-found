@@ -195,7 +195,8 @@ CREATE TABLE case_events (
 );
 CREATE INDEX case_events_case_idx ON case_events (case_id, at);
 
--- CCTV review notes and other investigation notes (staff only).
+-- CCTV review notes and other investigation notes. The reporter can read the findings.
+-- Camera name and time window are withheld from them in the service, not in this table.
 CREATE TABLE investigations (
   id          BIGSERIAL   PRIMARY KEY,
   case_id     BIGINT      NOT NULL REFERENCES cases (id) ON DELETE CASCADE,
@@ -205,9 +206,27 @@ CREATE TABLE investigations (
   window_from TIMESTAMPTZ,
   window_to   TIMESTAMPTZ,
   findings    TEXT        NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  deleted_at  TIMESTAMPTZ
 );
 CREATE INDEX investigations_case_idx ON investigations (case_id);
+
+-- Messages between the Security Cell and the person who reported the case. An image can be removed
+-- later; the row stays so the timeline can say that it was removed.
+CREATE TABLE case_updates (
+  id               BIGSERIAL   PRIMARY KEY,
+  case_id          BIGINT      NOT NULL REFERENCES cases (id) ON DELETE CASCADE,
+  user_id          BIGINT      NOT NULL REFERENCES users (id),
+  body             TEXT        NOT NULL DEFAULT '' CHECK (length(body) <= 1500),
+  image            TEXT,
+  image_mime       TEXT,
+  had_image        BOOLEAN     NOT NULL DEFAULT FALSE,
+  image_deleted_at TIMESTAMPTZ,
+  deleted_at       TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (btrim(body) <> '' OR image IS NOT NULL OR deleted_at IS NOT NULL OR image_deleted_at IS NOT NULL)
+);
+CREATE INDEX case_updates_case_idx ON case_updates (case_id, created_at);
 
 -- ================================================================== matching
 -- A suggestion pairs a lost report with a found report. lost_type and found_type are constant columns

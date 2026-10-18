@@ -6,6 +6,8 @@ const categoryModel = require('../models/category.model');
 const locationModel = require('../models/location.model');
 const userModel = require('../models/user.model');
 const investigationModel = require('../models/investigation.model');
+const updateModel = require('../models/caseUpdate.model');
+const { deleteStored } = require('../utils/images');
 const { paginate } = require('../models/collection');
 const config = require('../config');
 const { CASE, PUBLIC_VISIBLE } = require('../config/statuses');
@@ -221,8 +223,76 @@ async function withdraw(user, ref, ip = '') {
 async function addNote(staff, ref, input, ip = '') {
   const c = await byRefOrThrow(ref);
   await investigationModel.create({ caseId: c.id, userId: staff.id, ...input });
-  await caseModel.addEvent(c.id, { key: input.kind === 'cctv' ? 'ev_cctv_added' : 'ev_note_added', params: {}, staffOnly: true });
+  await caseModel.addEvent(c.id, { key: input.kind === 'cctv' ? 'ev_cctv_added' : 'ev_note_added', params: {}, staffOnly: false });
+  if (c.userId && c.userId !== staff.id) await notifications.notify(c.userId, 'notif_case_note', { ref: c.ref }, `/items/${c.ref}`);
   await audit.record(staff, input.kind === 'cctv' ? 'case.cctv_note' : 'case.note', c.ref, '', ip);
+}
+
+async function deleteNote(staff, ref, noteId, ip = '') {
+  const c = await byRefOrThrow(ref);
+  const note = await investigationModel.get(noteId);
+  if (!note || note.caseId !== c.id || note.deletedAt) throw new ServiceError('NOT_FOUND');
+  await investigationModel.update(note.id, { findings: '', deletedAt: new Date() });
+  await caseModel.addEvent(c.id, { key: 'ev_note_deleted', params: {}, staffOnly: false });
+  await audit.record(staff, 'case.note_deleted', c.ref, `note ${note.id}`, ip);
+}
+
+function canWriteUpdate(user, c) {
+  if (user.role === ROLES.SECURITY) return true;
+  return Boolean(c.userId && c.userId === user.id);
+}
+
+async function addUpdate(user, ref, body, file, ip = '') {
+  const c = await byRefOrThrow(ref);
+  if (!canWriteUpdate(user, c)) throw new ServiceError('NOT_FOUND');
+  const text = String(body || '').trim();
+  if (!text && !file) throw new ServiceError('UPDATE_EMPTY');
+  let image = null;
+  let imageMime = null;
+  if (file) {
+    const saved = await storePhoto(file);
+    image = saved.photo;
+    imageMime = saved.photoMime;
+  }
+  const row = await updateModel.create({
+    caseId: c.id, userId: user.id, body: text, image, imageMime, hadImage: Boolean(image)
+  });
+  await caseModel.addEvent(c.id, { key: 'ev_update_added', params: {}, staffOnly: false });
+  if (user.role === ROLES.SECURITY) {
+    if (c.userId && c.userId !== user.id) await notifications.notify(c.userId, 'notif_case_update', { ref: c.ref }, `/items/${c.ref}`);
+  } else {
+    await notifications.notifyRole(ROLES.SECURITY, 'notif_case_update_reply', { ref: c.ref }, `/security/cases/${c.ref}`);
+  }
+  await audit.record(user, 'case.update', c.ref, `update ${row.id}`, ip);
+  return row;
+}
+
+async function loadUpdate(user, ref, updateId, { anyImage = false } = {}) {
+  const c = await byRefOrThrow(ref);
+  const row = await updateModel.get(updateId);
+  if (!row || row.caseId !== c.id) throw new ServiceError('NOT_FOUND');
+  const staff = user.role === ROLES.SECURITY;
+  const owner = Boolean(c.userId && c.userId === user.id);
+  if (!staff && !(owner && (anyImage || row.userId === user.id))) throw new ServiceError('NOT_FOUND');
+  return { c, row };
+}
+
+async function deleteUpdateImage(user, ref, updateId, ip = '') {
+  const { c, row } = await loadUpdate(user, ref, updateId, { anyImage: true });
+  if (row.deletedAt || !row.image) throw new ServiceError('NOT_FOUND');
+  await deleteStored(row.image);
+  await updateModel.update(row.id, { image: null, imageMime: null, imageDeletedAt: new Date() });
+  await caseModel.addEvent(c.id, { key: 'ev_image_deleted', params: {}, staffOnly: false });
+  await audit.record(user, 'case.image_deleted', c.ref, `update ${row.id}`, ip);
+}
+
+async function deleteUpdate(user, ref, updateId, ip = '') {
+  const { c, row } = await loadUpdate(user, ref, updateId);
+  if (row.deletedAt) throw new ServiceError('NOT_FOUND');
+  if (row.image) await deleteStored(row.image);
+  await updateModel.update(row.id, { body: '', image: null, imageMime: null, deletedAt: new Date() });
+  await caseModel.addEvent(c.id, { key: 'ev_update_deleted', params: {}, staffOnly: false });
+  await audit.record(user, 'case.update_deleted', c.ref, `update ${row.id}`, ip);
 }
 
 // ---------------------------------------------------------------- viewing one case
@@ -266,8 +336,17 @@ async function getForViewer(user, ref) {
   }
   const reporter = (level === 'staff' || level === 'approver') && c.userId ? await userModel.findById(c.userId) : null;
   const events = c.events.filter((e) => level === 'staff' || !e.staffOnly);
-  const notes = level === 'staff' ? await investigationModel.forCase(c.id) : [];
-  return { view, level, category, location, reporter, events, notes };
+  const seeThread = level === 'staff' || level === 'owner';
+  const rawNotes = seeThread ? await investigationModel.forCase(c.id) : [];
+  const notes = rawNotes.map((n) => ({
+    id: n.id, kind: n.kind, createdAt: n.createdAt, deletedAt: n.deletedAt, authorName: n.authorName,
+    findings: n.deletedAt ? '' : n.findings,
+    camera: level === 'staff' && !n.deletedAt ? n.camera : '',
+    windowFrom: level === 'staff' && !n.deletedAt ? n.windowFrom : null,
+    windowTo: level === 'staff' && !n.deletedAt ? n.windowTo : null
+  }));
+  const updates = seeThread ? await updateModel.forCase(c.id) : [];
+  return { view, level, category, location, reporter, events, notes, updates };
 }
 
 // ---------------------------------------------------------------- lists
@@ -299,6 +378,7 @@ async function listApprovals({ history = false, page = 1 } = {}) {
 
 module.exports = {
   lookups, decorate, localName, publicCard, publicFeed, publicStats,
-  createReport, intakeFound, approvalDecision, reviewDecision, withdraw, addNote,
+  createReport, intakeFound, approvalDecision, reviewDecision, withdraw, addNote, deleteNote,
+  addUpdate, deleteUpdate, deleteUpdateImage,
   accessLevel, getForViewer, listMine, listForStaff, listByStatuses, listApprovals, byRefOrThrow
 };

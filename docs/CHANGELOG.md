@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.7.0
+
+The person who reported a case can read Security Cell notes. Either side can send an update and attach a photo. Removing a note, an update or a photo leaves a line in the case history. Claims is in the personal menu and shows the QR.
+
+### Added
+
+- On a case, the reporter sees the notes. The camera name and the time window stay with Security Cell and the administrator.
+- **Updates**, beside the notes. Security Cell and the reporter can write a message and attach a JPEG, PNG or WebP photo. The other side is notified.
+- **Remove note**, **Remove update** and **Remove photo**. The text or the file is cleared. The case timeline says that a note, an update or a photo was removed.
+- **Claims** (`/claims`) in the personal menu. A verified claim shows the QR code and the handover code there, and the claim page links back to this list.
+
+### Changed
+
+- `investigations.deleted_at` and the `case_updates` table are in `docs/schema.sql`. A database created before this version gets them the next time the app starts.
+
 ## 1.6.0
 
 An administrator can correct an account and remove it. Security Cell staff and the administrator can see every case status in one list, and can look up handovers after they are finished.

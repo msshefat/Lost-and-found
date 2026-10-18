@@ -81,34 +81,7 @@
     </section>
     <% } %>
 
-    <section class="panel">
-      <div class="panel-head"><h2><%= t('case_notes') %></h2></div>
-      <% if (!notes.length) { %><p class="muted"><%= t('case_notes_none') %></p><% } else { %>
-      <ul class="list">
-        <% notes.forEach(function (n) { %>
-        <li>
-          <strong><%= t('note_kind_' + n.kind) %></strong> <span class="small muted"><%= fmt.dateTime(n.createdAt) %></span>
-          <% if (n.kind === 'cctv' && (n.camera || n.windowFrom)) { %><br><span class="small muted"><%= n.camera %><% if (n.windowFrom) { %> · <%= fmt.dateTime(n.windowFrom) %><% if (n.windowTo) { %> – <%= fmt.dateTime(n.windowTo) %><% } %><% } %></span><% } %>
-          <br><span class="prose"><%= n.findings %></span>
-        </li>
-        <% }) %>
-      </ul>
-      <% } %>
-      <% if (canAct) { %>
-      <hr>
-      <form method="post" action="/security/cases/<%= view.ref %>/notes" novalidate>
-        <%- csrfField() %>
-        <div class="form-grid">
-          <%- include('/partials/select', { name: 'kind', label: 'note_kind', required: true, options: [{ value: 'note', label: t('note_kind_note') }, { value: 'cctv', label: t('note_kind_cctv') }], values: {} }) %>
-          <%- include('/partials/field', { name: 'camera', label: 'note_camera', maxlength: 80, values: {} }) %>
-          <%- include('/partials/field', { name: 'windowFrom', label: 'note_from', type: 'datetime-local', max: nowInput(), values: {} }) %>
-          <%- include('/partials/field', { name: 'windowTo', label: 'note_to', type: 'datetime-local', max: nowInput(), values: {} }) %>
-          <div class="span-2"><%- include('/partials/textarea', { name: 'findings', label: 'note_findings', required: true, rows: 3, maxlength: 1500, hint: 'note_hint', values: {} }) %></div>
-        </div>
-        <button class="btn btn-secondary" type="submit"><%= t('note_save') %></button>
-      </form>
-      <% } %>
-    </section>
+    <%- include('/partials/case-thread', { view: view, notes: notes, updates: updates, canNote: canAct, canUpdate: canAct, canDeleteNote: canAct, updateBase: '/security/cases/' + view.ref + '/updates' }) %>
   </div>
 
   <div class="stack">
